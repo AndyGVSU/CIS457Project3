@@ -3,7 +3,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.datatransfer.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.io.*;
+import java.net.*;
 
 public class ScrabbleGUI extends JFrame {
 
@@ -14,10 +16,20 @@ public class ScrabbleGUI extends JFrame {
     private HandTile[] handTiles = null;
     private PlayerPanel[] playerLabels = null;
     private ScrabbleClient game = null;
+    private boolean host;
+    private Vector<String> serverNameList;
+    private Vector<InetAddress> serverIPList;
+    private ServerListUpdater serverListUpdate;
+    private String serverName;
+    private JScrollPane listPane;
 
     public ScrabbleGUI(ScrabbleClient gm) {
         game = gm;
-        initComponents();
+        serverName = null;
+        host = false;
+
+        updateServerList();
+        initComponents();    
     }
 
     private void initComponents() {
@@ -32,6 +44,7 @@ public class ScrabbleGUI extends JFrame {
     }
 
     public void goToLobby() {
+        serverListUpdate.close();
         remove(getContentPane());
         setContentPane(new LobbyPanel());
         finishComponents();
@@ -42,6 +55,11 @@ public class ScrabbleGUI extends JFrame {
         setContentPane(new GamePanel());
         finishComponents();
         updateGUI();
+    }
+
+    public void updateServerList() {
+        serverNameList = game.getServerNames();
+        serverIPList = game.getServerAddresses();
     }
 
     public void updateGUI() {
@@ -118,22 +136,36 @@ public class ScrabbleGUI extends JFrame {
 
             serverButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
-                    //set game name
-                    goToLobby();
+
+                    serverName = (String) JOptionPane.showInputDialog(
+                    "Enter server name: ");
+                    
+                    if (!(serverName == null || serverName.isEmpty())) {
+                        host = true;
+                        goToLobby();
+                        }
                     }});
 
             JButton clientButton = new JButton("Join Game");
             clientButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
-                    //set up connection to valid IP
+                    InetAddress serverIP = serverIPList.get(listPane.getSelectedIndex());
+
+                    //set up TCP connection to valid IP!!
+
+
+                    host = false;
                     goToLobby();
                     }});
 
-            JLabel serverLabel = new JLabel("Available games:               ");
-            Vector<String> servers = new Vector<String>();
-            servers.add("test game 1");
-            servers.add("test game 2");
-            JList<String> serverList = new JList<String>(servers);
+            JLabel serverLabel = new JLabel("Available games:           ");
+            JList<String> serverList = new JList<String>(serverNameList);
+            serverList.setVisibleRowCount(8);
+            listPane = new JScrollPane(serverList);
+            listPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+            serverListUpdate = new ServerListUpdater(serverList);
+            serverListUpdate.start();
 
             //contain
             leftPanel.add(Box.createRigidArea(new Dimension(1,40)));
@@ -150,9 +182,11 @@ public class ScrabbleGUI extends JFrame {
                 ((JComponent) c).setAlignmentX(JComponent.CENTER_ALIGNMENT);
             }
 
+            rightPanel.add(Box.createRigidArea(new Dimension(1,30)));
             rightPanel.add(serverLabel);
-            rightPanel.add(serverList);
-            serverLabel.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+            rightPanel.add(Box.createRigidArea(new Dimension(1,10)));
+            rightPanel.add(listPane);
+            //serverLabel.setAlignmentX(JComponent.LEFT_ALIGNMENT);
 
             this.add(leftPanel);
             this.add(rightPanel);
@@ -163,6 +197,11 @@ public class ScrabbleGUI extends JFrame {
 
         public LobbyPanel() {
             initComponents();
+            if (host) {
+                game.closeUDP();
+                ScrabbleUDPServer nameSend = new ScrabbleUDPServer(serverName);
+                nameSend.start();
+            }
         }
 
         private void initComponents() {
@@ -183,14 +222,18 @@ public class ScrabbleGUI extends JFrame {
 
             add(Box.createRigidArea(new Dimension(1,20)));
 
-            //no button if running server!
-            JButton startButton = new JButton("START GAME");
-            startButton.addActionListener(new java.awt.event.ActionListener() {
-                public void actionPerformed(java.awt.event.ActionEvent evt) {
-                    goToGame();
-                    }});
+            //no button if running client!
+            if (host)
+                {
+                JButton startButton = new JButton("START GAME");
+                startButton.addActionListener(new java.awt.event.ActionListener() {
+                    public void actionPerformed(java.awt.event.ActionEvent evt) {
+                        goToGame();
+                        }});
 
-            add(startButton);
+                add(startButton);
+            }
+            
         }
     }
 
@@ -384,7 +427,6 @@ public class ScrabbleGUI extends JFrame {
 
                     //do game add-to-board event (will overwrite the above display change)
                     
-
                     return true;
                 }
 
@@ -417,5 +459,29 @@ public class ScrabbleGUI extends JFrame {
             return true;
         }
 
+    }
+    private class ServerListUpdater extends Thread {
+        private boolean open = true;
+        private JList<String> updateList;
+
+        public ServerListUpdater(JList<String> serverList) {
+            updateList = serverList;
+        }
+        
+        public void run() {
+            try {
+                while (open) {
+                    TimeUnit.SECONDS.sleep(2);
+                    updateServerList();
+                    updateList.setListData(serverNameList);
+                }
+            }
+            catch (Exception e) {
+                System.out.println(e);
+            }
+        }
+        public void close() {
+            open = false;
+        }
     }
 }
