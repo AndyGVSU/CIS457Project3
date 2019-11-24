@@ -1,12 +1,10 @@
+import java.io.*;
 import java.net.*;
 import java.util.*;
 
 //game class
 public class ScrabbleClient {
 
-    final static int UDP_Port = 10165;
-    final static int TCP_Port = 10166;
-    //private ScrabblePlayer[] players;
     private ScrabbleBoard board;
     private boolean host;
     final private int[] tileCounts = {9, 2, 2, 4, 12, 2, 3, 2, 9, 1, 1, 4, 2, 6, 8, 2, 1, 6, 4, 6, 4, 2, 2, 1, 2, 1, 2};
@@ -15,7 +13,14 @@ public class ScrabbleClient {
     private int turn;
     private Vector<String> serverNameList = new Vector<String>();
     private Vector<InetAddress> serverIPList = new Vector<InetAddress>();
+    private Vector<String> playerNameList = new Vector<String>();
     private MulticastSocket clientUDPSocket;
+    private Socket clientTCPSocket;
+    private ClientTCP client;
+    private int playerIndex = -1;
+    private int lastCommand = -1;
+    public enum ScrabbleCommand {ADD_HAND, REM_HAND, ADD_BOARD_TILE, REM_BOARD_TILE, 
+        END_TURN, PASS_TURN, START_GAME, END_GAME, PLAYER_INFO}
 
     public ScrabbleClient(boolean host) {
         this.host = host;
@@ -66,6 +71,10 @@ public class ScrabbleClient {
         return host;
     }
 
+    public Vector<String> getPlayerNames() {
+        return playerNameList;
+    }
+
     public Vector<String> getServerNames() {
         return serverNameList;
     }
@@ -79,17 +88,111 @@ public class ScrabbleClient {
             clientUDPSocket.close();
     }
 
+    public void setUpTCP(InetAddress host, String username) {
+        client = new ClientTCP(host, username);
+        client.start();
+    }
+
+    public void setLastCommand(int c) {
+        lastCommand = c;
+    }
+
+    public int getLastCommand() {
+        int l = lastCommand;
+        lastCommand = -1;
+        return l;
+    }
+
+    private class ClientTCP extends Thread {
+        private InetAddress host;
+        private String username;
+        private DataInputStream fromServer;
+        private DataOutputStream toServer;
+        private boolean isOpen = true;
+        
+        public ClientTCP(InetAddress host, String username) {
+            this.host = host;
+            this.username = username;
+        }
+
+        public void run() {
+            System.out.println("TCP Client Running");
+            clientTCPSocket = null;
+            try {
+                clientTCPSocket = new Socket(host, ScrabbleTCPServer.TCP_PORT);
+                System.out.println("Connected to "+host);
+                fromServer = new DataInputStream(clientTCPSocket.getInputStream());
+                toServer = new DataOutputStream(clientTCPSocket.getOutputStream());
+
+                //send name
+                toServer.writeUTF(username);
+                //get player index
+                playerIndex = fromServer.readInt();
+                /*
+                for (int i = playerIndex - 1; i > -1; i--) {
+                    
+                }
+                playerNameList.add(username);
+                */
+            }
+            catch (Exception e) {
+                System.out.println(e);
+                System.out.println("Failed to set up TCP Client");
+                isOpen = false;
+            }
+
+            int command = -1;
+            while (isOpen) {
+                //read next command
+                try {
+                command = fromServer.readInt();
+                ScrabbleCommand convert = ScrabbleCommand.values()[command];
+
+                switch(convert) {
+                    case ADD_HAND:
+
+                        break;
+                    case REM_HAND:
+                    
+                        break;
+                    case ADD_BOARD_TILE:
+                    
+                        break;
+                    case REM_BOARD_TILE:
+                    
+                        break;
+                    case END_TURN:
+                    
+                        break;
+                    case PASS_TURN:
+                    
+                        break;
+                    case START_GAME:
+
+                        break;
+                    case END_GAME:
+                    
+                        break;
+                    case PLAYER_INFO:
+                        playerNameList.add(fromServer.readUTF());
+                        break;
+                }
+            } catch(Exception e) {}
+            setLastCommand(command);
+            }
+        }
+    }
+
     private class ClientUDP extends Thread {
         public void run() {
 
             clientUDPSocket = null;
             try {
-                clientUDPSocket = new MulticastSocket(UDP_Port);
-                InetAddress group = InetAddress.getByName("237.253.253.253");
+                clientUDPSocket = new MulticastSocket(ScrabbleUDPServer.UDP_PORT);
+                InetAddress group = InetAddress.getByName(ScrabbleUDPServer.UDP_MULTICAST);
                 clientUDPSocket.joinGroup(group);
             }
-            catch (Exception e) 
-            {
+            catch (Exception e) {
                 System.out.println(e);
             }
             byte[] receiveData = new byte[1024];
@@ -101,17 +204,18 @@ public class ScrabbleClient {
                 DatagramPacket receiveName = new DatagramPacket(receiveData, receiveData.length);
                 try {
                     clientUDPSocket.receive(receiveName);
-                }
-                catch (Exception e)
-                {}
-                InetAddress sender = receiveName.getAddress();
-                newName = new String(receiveName.getData());
-                newName.trim();
+                    InetAddress sender = receiveName.getAddress();
+                    newName = new String(receiveName.getData());
+                    newName.trim();
 
-                if (serverIPList.indexOf(sender) == -1) {
-                    serverNameList.add(newName);
-                    serverIPList.add(sender);
+                    if (serverIPList.indexOf(sender) == -1) {
+                        serverNameList.add(newName);
+                        serverIPList.add(sender);
                     }
+                }
+                catch (Exception e) {
+                    System.out.println(e);
+                }
             }
 
             System.out.println("UDP Client Closed");

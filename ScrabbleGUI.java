@@ -19,9 +19,13 @@ public class ScrabbleGUI extends JFrame {
     private boolean host;
     private Vector<String> serverNameList;
     private Vector<InetAddress> serverIPList;
+    private Vector<String> playerNameList;
     private ServerListUpdater serverListUpdate;
+    private LobbyListUpdater playerListUpdate;
     private String serverName;
     private JScrollPane listPane;
+    private String username = "!PLAYER 1!";
+    private ScrabbleTCPServer server;
 
     public ScrabbleGUI(ScrabbleClient gm) {
         game = gm;
@@ -30,6 +34,16 @@ public class ScrabbleGUI extends JFrame {
 
         updateServerList();
         initComponents();    
+    }
+
+    public static void main(String[] args) {
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                ScrabbleClient game = new ScrabbleClient(true);
+                ScrabbleGUI gui = new ScrabbleGUI(game);
+                gui.setVisible(true);
+            }
+        });
     }
 
     private void initComponents() {
@@ -51,6 +65,9 @@ public class ScrabbleGUI extends JFrame {
     } 
 
     public void goToGame() {
+        playerListUpdate.close();
+        if (host)
+            server.closeLobby();
         remove(getContentPane());
         setContentPane(new GamePanel());
         finishComponents();
@@ -60,6 +77,10 @@ public class ScrabbleGUI extends JFrame {
     public void updateServerList() {
         serverNameList = game.getServerNames();
         serverIPList = game.getServerAddresses();
+    }
+
+    public void updatePlayerList() {
+        playerNameList = game.getPlayerNames();
     }
 
     public void updateGUI() {
@@ -104,16 +125,6 @@ public class ScrabbleGUI extends JFrame {
 
     public ScrabbleClient getGame() {
         return game;
-    } 
-
-    public static void main(String[] args) {
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                ScrabbleClient game = new ScrabbleClient(true);
-                ScrabbleGUI gui = new ScrabbleGUI(game);
-                gui.setVisible(true);
-            }
-        });
     }
 
     private class TitlePanel extends JPanel {
@@ -131,7 +142,7 @@ public class ScrabbleGUI extends JFrame {
 
             JLabel titleLabel = new JLabel("     SCRABBLE: CIS 457     ");
             titleLabel.setFont(new Font("Times New Roman",0,48));
-            JLabel authorLabel = new JLabel("By Andy Hudson, Zack Poorman, and Grey Schafer");
+            JLabel authorLabel = new JLabel("By Andy Hudson, Zack Poorman, and Gray Schafer");
             JButton serverButton = new JButton("Host Game");
 
             serverButton.addActionListener(new java.awt.event.ActionListener() {
@@ -142,20 +153,17 @@ public class ScrabbleGUI extends JFrame {
                     
                     if (!(serverName == null || serverName.isEmpty())) {
                         host = true;
+
+                        server = new ScrabbleTCPServer();
+                        server.start();
+
+                        InetAddress myAddress = null;
+                        try{ myAddress = InetAddress.getByName("127.0.0.1");}catch(Exception e){}
+
+                        game.setUpTCP(myAddress, username);
+
                         goToLobby();
                         }
-                    }});
-
-            JButton clientButton = new JButton("Join Game");
-            clientButton.addActionListener(new java.awt.event.ActionListener() {
-                public void actionPerformed(java.awt.event.ActionEvent evt) {
-                    InetAddress serverIP = serverIPList.get(listPane.getSelectedIndex());
-
-                    //set up TCP connection to valid IP!!
-
-
-                    host = false;
-                    goToLobby();
                     }});
 
             JLabel serverLabel = new JLabel("Available games:           ");
@@ -163,6 +171,23 @@ public class ScrabbleGUI extends JFrame {
             serverList.setVisibleRowCount(8);
             listPane = new JScrollPane(serverList);
             listPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+            JButton clientButton = new JButton("Join Game");
+            clientButton.addActionListener(new java.awt.event.ActionListener() {
+                public void actionPerformed(java.awt.event.ActionEvent evt) {
+                    
+                    int selectedServerIndex = serverList.getSelectedIndex();
+
+                    if (selectedServerIndex > -1) {
+                        InetAddress serverIP = serverIPList.get(selectedServerIndex);
+
+                        //set up TCP connection to valid IP!!
+                        game.setUpTCP(serverIP, username);
+
+                        host = false;
+                        goToLobby();
+                    }
+                    }});
 
             serverListUpdate = new ServerListUpdater(serverList);
             serverListUpdate.start();
@@ -197,8 +222,8 @@ public class ScrabbleGUI extends JFrame {
 
         public LobbyPanel() {
             initComponents();
+            game.closeUDP();
             if (host) {
-                game.closeUDP();
                 ScrabbleUDPServer nameSend = new ScrabbleUDPServer(serverName);
                 nameSend.start();
             }
@@ -213,15 +238,14 @@ public class ScrabbleGUI extends JFrame {
             add(Box.createRigidArea(new Dimension(1,40)));
             add(lobbyLabel);
             
-            JLabel[] playerNames = new JLabel[4];
-            for(int i=0; i < 4; i++) {
-                playerNames[i] = new JLabel("waiting for player "+i+"...");
-                add(Box.createRigidArea(new Dimension(1,10)));
-                add(playerNames[i]);
-            }
+            JList<String> playerNames = new JList<String>(game.getPlayerNames());
+            playerNames.setEnabled(false);
+            add(playerNames);
 
             add(Box.createRigidArea(new Dimension(1,20)));
 
+            playerListUpdate = new LobbyListUpdater(playerNames);
+            playerListUpdate.start();
             //no button if running client!
             if (host)
                 {
@@ -241,6 +265,7 @@ public class ScrabbleGUI extends JFrame {
 
         public GamePanel() {
             initComponents();
+            gameLoop();
         }
         
         private void initComponents() {
@@ -320,6 +345,21 @@ public class ScrabbleGUI extends JFrame {
 
             add(leftPanel);
             add(rightPanel);
+        }
+
+        private void gameLoop() {
+
+            int nextCmd;
+            boolean gameRunning = true;
+            while(gameRunning) {
+                nextCmd = game.getLastCommand();
+                if (nextCmd != -1) {
+                    if (nextCmd != ScrabbleClient.ScrabbleCommand.START_GAME.ordinal())
+                        updateGUI();
+                    else
+                        goToGame();
+                }
+            }
         }
     }
 
@@ -474,6 +514,31 @@ public class ScrabbleGUI extends JFrame {
                     TimeUnit.SECONDS.sleep(2);
                     updateServerList();
                     updateList.setListData(serverNameList);
+                }
+            }
+            catch (Exception e) {
+                System.out.println(e);
+            }
+        }
+        public void close() {
+            open = false;
+        }
+    }
+
+    private class LobbyListUpdater extends Thread {
+        private boolean open = true;
+        private JList<String> updateList;
+
+        public LobbyListUpdater(JList<String> playerList) {
+            updateList = playerList;
+        }
+        
+        public void run() {
+            try {
+                while (open) {
+                    TimeUnit.SECONDS.sleep(2);
+                    updatePlayerList();
+                    updateList.setListData(playerNameList);
                 }
             }
             catch (Exception e) {
