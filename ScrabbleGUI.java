@@ -24,8 +24,11 @@ public class ScrabbleGUI extends JFrame {
     private LobbyListUpdater playerListUpdate;
     private String serverName;
     private JScrollPane listPane;
-    private String username = "!PLAYER 1!";
+    private String username = "!DEBUG NAME!";
     private ScrabbleTCPServer server;
+    private boolean gameRunning = true;
+    private GameLoop commandListener;
+    private boolean enabled = true;
 
     public ScrabbleGUI(ScrabbleClient gm) {
         game = gm;
@@ -33,7 +36,7 @@ public class ScrabbleGUI extends JFrame {
         host = false;
 
         updateServerList();
-        initComponents();    
+        initComponents();
     }
 
     public static void main(String[] args) {
@@ -62,6 +65,9 @@ public class ScrabbleGUI extends JFrame {
         remove(getContentPane());
         setContentPane(new LobbyPanel());
         finishComponents();
+
+        commandListener = new GameLoop();
+        commandListener.start();
     } 
 
     public void goToGame() {
@@ -69,9 +75,10 @@ public class ScrabbleGUI extends JFrame {
         if (host)
             server.closeLobby();
         remove(getContentPane());
-        setContentPane(new GamePanel());
+        GamePanel gp = new GamePanel();
+        setContentPane(gp);
         finishComponents();
-        updateGUI();
+        updateGUI(false);
     }
 
     public void updateServerList() {
@@ -83,13 +90,29 @@ public class ScrabbleGUI extends JFrame {
         playerNameList = game.getPlayerNames();
     }
 
-    public void updateGUI() {
+    public void updateGUI(boolean turnOn) {
        
-       ScrabbleClient client = getGame();
+        //enables/disables all components, but only if flagged beforehand (to avoid repeats)
+        if (enabled != turnOn) {
+            System.out.println("GUI Turned On: "+turnOn);
+            enabled = turnOn;
+
+            for (Component p : getContentPane().getComponents()) {
+                for (Component subPanelc : ((JPanel) p).getComponents())
+                    if (subPanelc.getClass() == JPanel.class) {
+                        for (Component d : ((JPanel) subPanelc).getComponents()) 
+                            d.setEnabled(turnOn);
+                    }   
+                    else
+                        subPanelc.setEnabled(turnOn);
+            }
+        }
         //update hand
+        /*
         for (int i = 0; i < handTiles.length; i++) {
             //setText();
         }
+        */
 
         //update board
         ScrabbleBoard board = game.getBoard();
@@ -252,8 +275,8 @@ public class ScrabbleGUI extends JFrame {
                 JButton startButton = new JButton("START GAME");
                 startButton.addActionListener(new java.awt.event.ActionListener() {
                     public void actionPerformed(java.awt.event.ActionEvent evt) {
-                        goToGame();
-                        }});
+                        game.startGame();
+                    }});
 
                 add(startButton);
             }
@@ -265,7 +288,6 @@ public class ScrabbleGUI extends JFrame {
 
         public GamePanel() {
             initComponents();
-            gameLoop();
         }
         
         private void initComponents() {
@@ -289,7 +311,7 @@ public class ScrabbleGUI extends JFrame {
             passButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     //tell game to restock game hand
-                        //go to next turn
+                        //go to next turn (done *client-side*)
                         //update GUI
                     }});
 
@@ -322,8 +344,9 @@ public class ScrabbleGUI extends JFrame {
             JPanel handPanel = new JPanel();
             handPanel.setLayout(new BoxLayout(handPanel, BoxLayout.X_AXIS));
 
-            playerLabels = new PlayerPanel[game.getPlayerCount()];
-            for(int i = 0; i < 4; i++) {
+            int playerCount = game.getPlayerCount();
+            playerLabels = new PlayerPanel[playerCount];
+            for(int i = 0; i < playerCount; i++) {
                 playerLabels[i] = new PlayerPanel();
                 }
             handPanel.add(playerLabels[0]);
@@ -339,27 +362,15 @@ public class ScrabbleGUI extends JFrame {
             
             rightPanel.add(gridPanel, BorderLayout.CENTER);
             rightPanel.add(handPanel, BorderLayout.SOUTH);
-            rightPanel.add(playerLabels[1], BorderLayout.WEST);
-            rightPanel.add(playerLabels[2], BorderLayout.NORTH);
-            rightPanel.add(playerLabels[3], BorderLayout.EAST);
+            if (playerLabels.length > 1)
+                rightPanel.add(playerLabels[1], BorderLayout.WEST);
+            if (playerLabels.length > 2)
+                rightPanel.add(playerLabels[2], BorderLayout.NORTH);
+            if (playerLabels.length > 3)
+                rightPanel.add(playerLabels[3], BorderLayout.EAST);
 
             add(leftPanel);
             add(rightPanel);
-        }
-
-        private void gameLoop() {
-
-            int nextCmd;
-            boolean gameRunning = true;
-            while(gameRunning) {
-                nextCmd = game.getLastCommand();
-                if (nextCmd != -1) {
-                    if (nextCmd != ScrabbleClient.ScrabbleCommand.START_GAME.ordinal())
-                        updateGUI();
-                    else
-                        goToGame();
-                }
-            }
         }
     }
 
@@ -547,6 +558,26 @@ public class ScrabbleGUI extends JFrame {
         }
         public void close() {
             open = false;
+        }
+    }
+
+    private class GameLoop extends Thread {
+
+        public void run() {
+            int nextCmd = -1;
+
+            while(gameRunning) {
+                nextCmd = game.getLastCommand(); //resets to -1 after access
+                System.out.print("");
+                if (nextCmd != -1) {
+                    System.out.println("GUI heard command: "+nextCmd);
+                    if (nextCmd == ScrabbleClient.ScrabbleCommand.START_GAME.ordinal())
+                        goToGame();
+                    else if (nextCmd != ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal())
+                        updateGUI(game.getMyTurn());
+                }
+            }
+            System.out.println("GUI Command listener thread terminated");
         }
     }
 }

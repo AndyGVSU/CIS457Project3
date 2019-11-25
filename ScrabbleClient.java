@@ -6,19 +6,25 @@ import java.util.*;
 public class ScrabbleClient {
 
     private ScrabbleBoard board;
-    private boolean host;
+    private Vector<ScrabblePlayer> players = new Vector<ScrabblePlayer>();
     final private int[] tileCounts = {9, 2, 2, 4, 12, 2, 3, 2, 9, 1, 1, 4, 2, 6, 8, 2, 1, 6, 4, 6, 4, 2, 2, 1, 2, 1, 2};
     private char[] tileCharacters = new char[tileCounts.length];
+
     private Vector<ScrabbleTile> tileBag;
-    private int turn;
     private Vector<String> serverNameList = new Vector<String>();
     private Vector<InetAddress> serverIPList = new Vector<InetAddress>();
     private Vector<String> playerNameList = new Vector<String>();
+
+    private boolean host;
     private MulticastSocket clientUDPSocket;
     private Socket clientTCPSocket;
     private ClientTCP client;
+
+    private int turn;
     private int playerIndex = -1;
+    private int playerCount = 0;
     private int lastCommand = -1;
+
     public enum ScrabbleCommand {ADD_HAND, REM_HAND, ADD_BOARD_TILE, REM_BOARD_TILE, 
         END_TURN, PASS_TURN, START_GAME, END_GAME, PLAYER_INFO}
 
@@ -51,8 +57,7 @@ public class ScrabbleClient {
     }
 
     public int getPlayerCount() {
-        return 4;
-        //return players.length;
+        return playerCount;
     }
 
     public ScrabbleBoard getBoard() {
@@ -63,12 +68,34 @@ public class ScrabbleClient {
     
     public void passTurn() {};
 
+    public void startGame() {
+        try {
+        sendCommand(ScrabbleCommand.START_GAME);
+        }
+        catch(Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    /*
+    public void startTurn() {
+        int handSize = players.get(playerIndex).getHandSize();
+        
+        sendCommand(ScrabbleCommand.ADD_HAND);
+
+    }
+    */
+
     public void setIsHost(boolean h) {
         host = h;
     }
 
     public boolean getIsHost() {
         return host;
+    }
+
+    public boolean getMyTurn() {
+        return (turn == playerIndex);
     }
 
     public Vector<String> getPlayerNames() {
@@ -98,9 +125,16 @@ public class ScrabbleClient {
     }
 
     public int getLastCommand() {
-        int l = lastCommand;
+        int last = lastCommand;
         lastCommand = -1;
-        return l;
+        return last;
+    }
+
+    //only for command values; additional arguments must be provided when necessary
+    public void sendCommand(ScrabbleCommand cmd) throws Exception {
+        DataOutputStream out = client.getOutputStream();
+        out.writeBoolean(false);
+        out.writeInt(cmd.ordinal());
     }
 
     private class ClientTCP extends Thread {
@@ -128,12 +162,6 @@ public class ScrabbleClient {
                 toServer.writeUTF(username);
                 //get player index
                 playerIndex = fromServer.readInt();
-                /*
-                for (int i = playerIndex - 1; i > -1; i--) {
-                    
-                }
-                playerNameList.add(username);
-                */
             }
             catch (Exception e) {
                 System.out.println(e);
@@ -141,12 +169,17 @@ public class ScrabbleClient {
                 isOpen = false;
             }
 
+            boolean sentByServer;
             int command = -1;
             while (isOpen) {
                 //read next command
                 try {
+                sentByServer = fromServer.readBoolean();
+                if (!sentByServer)
+                    System.out.println("!!!Client got data sent by client!!!");
                 command = fromServer.readInt();
                 ScrabbleCommand convert = ScrabbleCommand.values()[command];
+                System.out.println("Client received command: "+command);
 
                 switch(convert) {
                     case ADD_HAND:
@@ -162,24 +195,45 @@ public class ScrabbleClient {
                     
                         break;
                     case END_TURN:
-                    
+                        //score already-verified tiles
+                        
+                        //increment turn
+                        turn++;
+                        if (turn == getPlayerCount())
+                            turn = 0;
+                        
+                        if (getMyTurn())
+                            turnStart();
                         break;
                     case PASS_TURN:
                     
                         break;
                     case START_GAME:
+                        //set up game on client-end
+                        for (int i = 0; i < playerCount; i++) {
+                            players.add(new ScrabblePlayer(playerNameList.get(i)));
+                        }
+                        
+                        //each player should have an automatic pass to refill hand
 
+                        if (getMyTurn())
+                            turnStart();
                         break;
                     case END_GAME:
-                    
+
                         break;
                     case PLAYER_INFO:
                         playerNameList.add(fromServer.readUTF());
+                        playerCount++;
                         break;
                 }
             } catch(Exception e) {}
+
             setLastCommand(command);
             }
+        }
+        public DataOutputStream getOutputStream() {
+            return toServer;
         }
     }
 

@@ -7,11 +7,9 @@ public class ScrabblePlayer {
     private String name;
     private int score;
     private Vector<ScrabbleTile> hand;
-    private Socket clientSocket;
 
-    public ScrabblePlayer(String name, Socket sock) {
+    public ScrabblePlayer(String name) {
         this.name = name;
-        this.clientSocket = sock;
         this.score = 0;
         this.hand = new Vector<ScrabbleTile>();
     }
@@ -36,7 +34,7 @@ public class ScrabblePlayer {
         return score;
     }
 
-    public Socket getSocket() {
-        return clientSocket;
+    public ScrabbleTile getHandSize() {
+        return hand.size();
     }
 }

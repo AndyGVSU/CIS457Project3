@@ -36,62 +36,52 @@ private boolean isOpen = true;
         DataInputStream nextInput;
         DataOutputStream nextOutput;
 
-        while (acceptingClients) {
-            try {
-                nextSocket = control.accept();
-                System.out.println("Client connected");
-                nextInput = new DataInputStream(nextSocket.getInputStream());
-                nextOutput = new DataOutputStream(nextSocket.getOutputStream());
-                String username = nextInput.readUTF();
+        new ConnectionListener().start();
 
-                addClient(nextSocket, username, nextInput, nextOutput);
-
-                getClientOutputStream(playerIndex).writeInt(playerIndex);
-                //
-                int outputIndex = 0;
-                for (DataOutputStream o : toClients) {
-                    outputIndex = toClients.indexOf(o);
-                    for (int i = outputIndex; i > -1; i--) {
-                        o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
-                        o.writeUTF(getClientName(playerIndex));
-                    }
-                }
-                //}
-            }
-            catch (Exception e) {
-                System.out.println(e);
-                System.out.println("TCP Server: Failed to set up client");
-            }
-            if (clients.size() == 4)
-                closeLobby();
-
-            playerIndex++;
+        while (true) {
+            if (clients.size() > 0)
+                break;
         }
-
         //can only receive data from ONE PLAYER at a time
         playerIndex = 0;
         byte[] mirror = new byte[2048];
         int cmd;
+        boolean sentBy;
+        boolean extraData = false;
 
         try {
         while (isOpen) {
             //mirror received data from players serially
             nextInput = getClientInputStream(playerIndex);
-            nextOutput = getClientOutputStream(playerIndex);
 
-            cmd = nextInput.readInt();
-            nextInput.readFully(mirror);
-            for (Socket s : clients) {
-                nextOutput.writeInt(cmd);
-                nextOutput.write(mirror);
-            }
+            sentBy = nextInput.readBoolean();
 
-            //changes which player is sending commands
-            if (cmd == ScrabbleClient.ScrabbleCommand.END_TURN.ordinal() ||
-            cmd == ScrabbleClient.ScrabbleCommand.PASS_TURN.ordinal()) {
-                playerIndex++;
-                if (playerIndex >= clients.size()) {
-                    playerIndex = 0;
+            //server can only mirror packets sent by clients
+            //avoids duplicates (since client in this case has a server)
+            if (!sentBy) {
+                cmd = nextInput.readInt();
+                System.out.println("Server received command: "+cmd);
+                
+                extraData = false;
+                if (nextInput.available() > 0) {
+                    nextInput.readFully(mirror);
+                    extraData = true;
+                }
+
+                for (DataOutputStream o : toClients) {
+                    o.writeBoolean(true);
+                    o.writeInt(cmd);
+                    if (extraData)
+                        o.write(mirror);
+                }
+
+                //changes which player is sending commands
+                if (cmd == ScrabbleClient.ScrabbleCommand.END_TURN.ordinal() ||
+                cmd == ScrabbleClient.ScrabbleCommand.PASS_TURN.ordinal()) {
+                    playerIndex++;
+                    if (playerIndex >= clients.size()) {
+                        playerIndex = 0;
+                    }
                 }
             }
         }
@@ -132,5 +122,48 @@ private boolean isOpen = true;
 
     private DataInputStream getClientInputStream(int playerIndex) {
         return fromClients.get(playerIndex);
+    }
+
+    private class ConnectionListener extends Thread {
+        public void run() {
+            Socket nextSocket;
+            int playerIndex = 0;
+    
+            DataInputStream nextInput;
+            DataOutputStream nextOutput;
+
+            while (acceptingClients) {
+                try {
+                    nextSocket = control.accept();
+                    System.out.println("Client connected");
+                    nextInput = new DataInputStream(nextSocket.getInputStream());
+                    nextOutput = new DataOutputStream(nextSocket.getOutputStream());
+                    String username = nextInput.readUTF();
+    
+                    addClient(nextSocket, username, nextInput, nextOutput);
+    
+                    getClientOutputStream(playerIndex).writeInt(playerIndex);
+                    //
+                    int outputIndex = 0;
+                    for (DataOutputStream o : toClients) {
+                        outputIndex = toClients.indexOf(o);
+                        for (int i = outputIndex; i > -1; i--) {
+                            o.writeBoolean(true);
+                            o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
+                            o.writeUTF(getClientName(playerIndex));
+                        }
+                    }
+                    //}
+                }
+                catch (Exception e) {
+                    System.out.println(e);
+                    System.out.println("TCP Server: Failed to set up client");
+                }
+                if (clients.size() == 4)
+                    closeLobby();
+    
+                playerIndex++;
+            }
+        }
     }
 }
