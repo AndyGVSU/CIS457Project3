@@ -13,22 +13,30 @@ public class ScrabbleGUI extends JFrame {
     final static Font tileHandFont = new Font("Times New Roman",0,32);
     final private Color[] boardBonusColor = {Color.WHITE, Color.CYAN, Color.BLUE, Color.PINK, Color.RED, Color.YELLOW};
     private BoardTile[][] boardTiles;
-    private HandTile[] handTiles = null;
+    private HandTile[] handTiles = new HandTile[ScrabblePlayer.HAND_SIZE];
     private PlayerPanel[] playerLabels = null;
     private ScrabbleClient game = null;
-    private boolean host;
+    
+    private ScrabbleTCPServer server;
+    
     private Vector<String> serverNameList;
     private Vector<InetAddress> serverIPList;
     private Vector<String> playerNameList;
+    
     private ServerListUpdater serverListUpdate;
     private LobbyListUpdater playerListUpdate;
-    private String serverName;
-    private JScrollPane listPane;
-    private String username = "!DEBUG NAME!";
-    private ScrabbleTCPServer server;
-    private boolean gameRunning = true;
     private GameLoop commandListener;
+    
+    private JScrollPane listPane;
+    private JLabel totalLettersLabel;
+    private JTable letterCounts;
+    
+    private String serverName;
+    private String username = "!DEBUG NAME!";
+    private boolean gameRunning = true;
+    
     private boolean enabled = true;
+    private boolean host;
 
     public ScrabbleGUI(ScrabbleClient gm) {
         game = gm;
@@ -107,13 +115,20 @@ public class ScrabbleGUI extends JFrame {
                         subPanelc.setEnabled(turnOn);
             }
         }
-        //update hand
-        /*
-        for (int i = 0; i < handTiles.length; i++) {
-            //setText();
+        
+        ScrabblePlayer play = game.getPlayers().get(game.getPlayerIndex());
+        if (play != null) {
+	        //update hand
+	        for (int i = 0; i < handTiles.length; i++) {
+	        	try {
+	            handTiles[i].setText(String.valueOf(play.getTile(i).getLetter()));
+	        	}
+	        	//no more tiles in hand
+	        	catch (ArrayIndexOutOfBoundsException e) {
+	        		handTiles[i].setText("");
+	        	}
+	        }
         }
-        */
-
         //update board
         ScrabbleBoard board = game.getBoard();
         ScrabbleTile gameTile;
@@ -132,17 +147,24 @@ public class ScrabbleGUI extends JFrame {
             }
         }
 
+        Vector<ScrabblePlayer> playerList = game.getPlayers();
         //update player values
-        /*
         for (int i = 0; i < game.getPlayerCount(); i++) {
             PlayerPanel p = playerLabels[i];
-            p.setNameLabel();
-            p.setScoreLabel();
-            p.setTileLabel();
+            play = playerList.get(i);
+            
+            p.setNameLabel(play.getName());
+            p.setScoreLabel("Score: "+String.valueOf(play.getScore()));
+            p.setTileLabel("Tiles: "+String.valueOf(play.getHandSize()));
         }
-*/
         //update tile count
-
+        int[] tileCounts = game.getCurrentTileCounts();
+        int totalTiles = 0;
+        for (int i = 0; i < tileCounts.length; i++) {
+        	totalTiles += tileCounts[i];
+        	letterCounts.setValueAt(String.valueOf(tileCounts[i]),i+1,1);
+        }
+        totalLettersLabel.setText("Total Tiles: "+String.valueOf(totalTiles));
         
     }
 
@@ -301,18 +323,20 @@ public class ScrabbleGUI extends JFrame {
             leftPanel.setLayout(new BoxLayout(leftPanel,BoxLayout.Y_AXIS));
 
             JLabel titleLabel = new JLabel("Scrabble CIS457");
-            JTable letterCounts = new JTable(27,2);
-            for (int i = 0; i < 27; i++) {
-
+            letterCounts = new JTable(28,2);
+            letterCounts.setValueAt("Letter", 0, 0);
+            letterCounts.setValueAt("Tiles Left", 0, 1);
+            for (int i = 1; i < 28; i++) {
+            	letterCounts.setValueAt((char) ('A' + i - 1), i, 0);
             }
+            letterCounts.setValueAt("blank", 27, 0);
 
-            JLabel letterTotal = new JLabel("100");
+            totalLettersLabel = new JLabel("Total Tiles: 100");
             JButton passButton = new JButton("PASS");
             passButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     //tell game to restock game hand
                         //go to next turn (done *client-side*)
-                        //update GUI
                     }});
 
             JButton endButton = new JButton("END");
@@ -322,12 +346,11 @@ public class ScrabbleGUI extends JFrame {
                     //upon a successful validation:
                         //tell game to restock game hand
                         //go to next turn
-                        //update GUI
                     }});
             
             leftPanel.add(titleLabel);
             leftPanel.add(letterCounts);
-            leftPanel.add(letterTotal);
+            leftPanel.add(totalLettersLabel);
             leftPanel.add(passButton);
             leftPanel.add(endButton);
 
@@ -351,7 +374,6 @@ public class ScrabbleGUI extends JFrame {
                 }
             handPanel.add(playerLabels[0]);
             
-            handTiles = new HandTile[ScrabblePlayer.HAND_SIZE];
             HandTile h;
             for(int i = 0; i < ScrabblePlayer.HAND_SIZE; i++) {
                 h = new HandTile("A");

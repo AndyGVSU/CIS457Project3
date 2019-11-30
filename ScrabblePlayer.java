@@ -34,7 +34,10 @@ public class ScrabblePlayer {
         return score;
     }
 
-    public ScrabbleTile getHandSize() {
+    public int getHandSize() {
         return hand.size();
+    }
+    public ScrabbleTile getTile(int index) {
+    	return hand.get(index);
     }
 }

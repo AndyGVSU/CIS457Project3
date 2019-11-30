@@ -5,6 +5,7 @@ public class ScrabbleTile {
     private boolean scored;
     private boolean validated;
 
+    //letter should always be capital or '['
     public ScrabbleTile(char letter) {
         this.letter = letter;
         this.score = tileScore[letter - 'A'];

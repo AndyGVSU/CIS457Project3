@@ -8,6 +8,7 @@ public class ScrabbleClient {
     private ScrabbleBoard board;
     private Vector<ScrabblePlayer> players = new Vector<ScrabblePlayer>();
     final private int[] tileCounts = {9, 2, 2, 4, 12, 2, 3, 2, 9, 1, 1, 4, 2, 6, 8, 2, 1, 6, 4, 6, 4, 2, 2, 1, 2, 1, 2};
+    private int[] currentTileCounts = tileCounts.clone();
     private char[] tileCharacters = new char[tileCounts.length];
 
     private Vector<ScrabbleTile> tileBag;
@@ -59,6 +60,14 @@ public class ScrabbleClient {
     public int getPlayerCount() {
         return playerCount;
     }
+    
+    /*
+     * Returns this client's player index.
+     * 
+     */
+    public int getPlayerIndex() {
+    	return playerIndex;
+    }
 
     public ScrabbleBoard getBoard() {
         return board;
@@ -68,6 +77,10 @@ public class ScrabbleClient {
     
     public void passTurn() {};
 
+    public int[] getCurrentTileCounts() {
+    	return currentTileCounts;
+    }
+    
     public void startGame() {
         try {
         sendCommand(ScrabbleCommand.START_GAME);
@@ -77,14 +90,11 @@ public class ScrabbleClient {
         }
     }
 
-    /*
-    public void startTurn() {
+    public void turnStart() {
         int handSize = players.get(playerIndex).getHandSize();
         
         sendCommand(ScrabbleCommand.ADD_HAND);
-
     }
-    */
 
     public void setIsHost(boolean h) {
         host = h;
@@ -98,6 +108,10 @@ public class ScrabbleClient {
         return (turn == playerIndex);
     }
 
+    public Vector<ScrabblePlayer> getPlayers() {
+    	return players;
+    }
+    
     public Vector<String> getPlayerNames() {
         return playerNameList;
     }
@@ -131,10 +145,15 @@ public class ScrabbleClient {
     }
 
     //only for command values; additional arguments must be provided when necessary
-    public void sendCommand(ScrabbleCommand cmd) throws Exception {
+    public void sendCommand(ScrabbleCommand cmd) {
+    	try {
         DataOutputStream out = client.getOutputStream();
         out.writeBoolean(false);
         out.writeInt(cmd.ordinal());
+    	}
+    	catch (Exception e) {
+    		System.out.println(e);
+    	}
     }
 
     private class ClientTCP extends Thread {
@@ -160,7 +179,7 @@ public class ScrabbleClient {
 
                 //send name
                 toServer.writeUTF(username);
-                //get player index
+                //get MY player index
                 playerIndex = fromServer.readInt();
             }
             catch (Exception e) {
@@ -184,12 +203,14 @@ public class ScrabbleClient {
                 switch(convert) {
                     case ADD_HAND:
 
+                    	
                         break;
                     case REM_HAND:
                     
                         break;
                     case ADD_BOARD_TILE:
                     
+                    	//currentTileCounts[char index]--; //this is for keeping track of tiles left
                         break;
                     case REM_BOARD_TILE:
                     
