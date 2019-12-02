@@ -32,7 +32,7 @@ public class ScrabbleGUI extends JFrame {
     private JTable letterCounts;
     
     private String serverName;
-    private String username = "!DEBUG NAME!";
+    private String username = "!DEBUG NAME!"; //defualt name
     private boolean gameRunning = true;
     
     private boolean enabled = true;
@@ -189,12 +189,18 @@ public class ScrabbleGUI extends JFrame {
             titleLabel.setFont(new Font("Times New Roman",0,48));
             JLabel authorLabel = new JLabel("By Andy Hudson, Zack Poorman, and Gray Schafer");
             JButton serverButton = new JButton("Host Game");
+            
+            JLabel nameLabel = new JLabel("User name:");
+            JTextField nameField = new JTextField("",10);
 
             serverButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
 
                     serverName = (String) JOptionPane.showInputDialog(
                     "Enter server name: ");
+                    if (nameField.getText() != ""){
+                        username = nameField.getText();
+                    }
                     
                     if (!(serverName == null || serverName.isEmpty())) {
                         host = true;
@@ -220,6 +226,10 @@ public class ScrabbleGUI extends JFrame {
             JButton clientButton = new JButton("Join Game");
             clientButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
+                    
+                    if (nameField.getText() != ""){
+                        username = nameField.getText();
+                    }
                     
                     int selectedServerIndex = serverList.getSelectedIndex();
 
@@ -247,6 +257,10 @@ public class ScrabbleGUI extends JFrame {
             leftPanel.add(Box.createRigidArea(new Dimension(1,20)));
             leftPanel.add(clientButton);
             leftPanel.add(Box.createRigidArea(new Dimension(1,60)));
+            leftPanel.add(nameLabel);
+            //leftPanel.add(Box.createRigidArea(new Dimension(1,20)));
+            leftPanel.add(nameField);
+            leftPanel.add(Box.createRigidArea(new Dimension(1,20)));
 
             for (Component c : leftPanel.getComponents()){
                 ((JComponent) c).setAlignmentX(JComponent.CENTER_ALIGNMENT);
