@@ -351,6 +351,8 @@ public class ScrabbleGUI extends JFrame {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     //tell game to restock game hand
                         //go to next turn (done *client-side*)
+                        game.sendCommand(ScrabbleClient.ScrabbleCommand.PASS_TURN);
+                        //System.out.println("pass on gui");
                     }});
 
             JButton endButton = new JButton("END");
@@ -360,6 +362,8 @@ public class ScrabbleGUI extends JFrame {
                     //upon a successful validation:
                         //tell game to restock game hand
                         //go to next turn
+                        game.sendCommand(ScrabbleClient.ScrabbleCommand.END_TURN); //freezing up?
+                        //System.out.println("end on gui");
                     }});
             
             leftPanel.add(titleLabel);
