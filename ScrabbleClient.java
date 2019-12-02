@@ -73,9 +73,23 @@ public class ScrabbleClient {
         return board;
     }
     
-    public void endTurn() {};
+    public void endTurn() {
+        try {
+        sendCommand(ScrabbleCommand.END_TURN);
+        }
+        catch(Exception e) {
+            System.out.println(e);
+        }
+    };
     
-    public void passTurn() {};
+    public void passTurn() {
+        try {
+        sendCommand(ScrabbleCommand.PASS_TURN);
+        }
+        catch(Exception e) {
+            System.out.println(e);
+        }
+    };
 
     public int[] getCurrentTileCounts() {
     	return currentTileCounts;
@@ -202,11 +216,15 @@ public class ScrabbleClient {
 
                 switch(convert) {
                     case ADD_HAND:
-
-                    	
+                        //if we are host, then pick a tile from tile bag then send to client
+                    	if (getIsHost()){//if we are host
+                            int ghost = new Random().nextInt(tileBag.size());
+                            ScrabbleTile tile = tileBag.get(ghost);
+                            //send this to the others with REM_HAND?
+                    	}
                         break;
                     case REM_HAND:
-                    
+                        
                         break;
                     case ADD_BOARD_TILE:
                     
@@ -221,19 +239,30 @@ public class ScrabbleClient {
                         //increment turn
                         turn++;
                         if (turn == getPlayerCount())
-                            turn = 0;
+                            turn = 0;//if everyone has had a turn this round
                         
-                        if (getMyTurn())
+                        if (getMyTurn()){
                             turnStart();
+                        }
                         break;
                     case PASS_TURN:
-                    
+                        //System.out.println("pass turn");
+                        turn++;
+                        if (turn == getPlayerCount())
+                            turn = 0;//if everyone has had a turn this round
+                        
+                        if (getMyTurn()){
+                            turnStart();
+                        }
                         break;
                     case START_GAME:
                         //set up game on client-end
                         for (int i = 0; i < playerCount; i++) {
                             players.add(new ScrabblePlayer(playerNameList.get(i)));
                         }
+                        
+                        //System.out.println(Integer.toString(playerIndex)+" YEEE");
+                        
                         
                         //each player should have an automatic pass to refill hand
 
@@ -248,7 +277,9 @@ public class ScrabbleClient {
                         playerCount++;
                         break;
                 }
-            } catch(Exception e) {}
+            } catch(Exception e) {
+                System.out.println(e);
+            }
 
             setLastCommand(command);
             }
