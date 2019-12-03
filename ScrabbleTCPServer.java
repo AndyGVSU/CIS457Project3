@@ -75,6 +75,7 @@ private boolean isOpen = true;
                     o.writeInt(cmd);
                     //if (extraData)
                         //o.write(mirror);
+                    System.out.println("Server sending command #"+Integer.toString(cmd));
                     if (cmd == 0)
                         o.writeInt(nextInput.readInt());
                     if (cmd == 1)
@@ -103,7 +104,8 @@ private boolean isOpen = true;
         }
         }
         catch (Exception e) {
-            System.out.println(e);
+            System.out.println(e+", thrown at line # "+Integer.toString(e.getStackTrace()[0].getLineNumber()));
+            
         }
     }
 
@@ -157,17 +159,20 @@ private boolean isOpen = true;
                     String username = nextInput.readUTF();
     
                     addClient(nextSocket, username, nextInput, nextOutput);
-    
+                    //System.out.println("Server client info sending: "+Integer.toString(playerIndex));
                     getClientOutputStream(playerIndex).writeInt(playerIndex);
                     //
                     int outputIndex = 0;
-                    for (DataOutputStream o : toClients) {
-                        outputIndex = toClients.indexOf(o);
-                        for (int i = outputIndex; i > -1; i--) {
-                            o.writeBoolean(true);
-                            o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
-                            o.writeUTF(getClientName(playerIndex));
-                        }
+                    for (DataOutputStream o : toClients) {//tell each client of the new arriving player so they can update player counts
+                        //if (o != toClients.lastElement()){//if they are not the new client
+                            outputIndex = toClients.indexOf(o);
+                            for (int i = outputIndex; i > -1; i--) {
+                                o.writeBoolean(true);
+                                o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
+                                o.writeUTF(getClientName(playerIndex));
+                            }
+                        //}
+                        //else{System.out.println("Client rejected");}
                     }
                     //}
                 }
