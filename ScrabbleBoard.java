@@ -1,3 +1,5 @@
+import java.util.*;
+
 public class ScrabbleBoard {
 
     enum BonusValue {NA, DL, TL, DW, TW, ST; }
@@ -50,19 +52,22 @@ public class ScrabbleBoard {
 
     //network event
     public void addBoardTile(int row, int col, ScrabbleTile t) {
-        
+        boardTiles[row][col] = t;
     }
     //network event
-    public void removeBoardTile(int row, int col) {
-        
+    public ScrabbleTile removeBoardTile(int row, int col) {
+        ScrabbleTile t = boardTiles[row][col];
+        boardTiles[row][col] = null;
+        return t;
     }
 
     //if valid, returns total score, otherwise returns 0
     public int validatePlacedTiles() {
         ScrabbleTile nextTile;
-        boolean breakSeach = false;
-        for (int r = 0; (r < ScrabbleBoard.BOARD_SIZE && !breakSearch); r++) {
-            for (int c = 0; (c < ScrabbleBoard.BOARD_SIZE && !breakSearch); c++) {
+        boolean breakSearch = false;
+        int r = 0, c = 0;
+        for (r = 0; (r < ScrabbleBoard.BOARD_SIZE && !breakSearch); r++) {
+            for (c = 0; (c < ScrabbleBoard.BOARD_SIZE && !breakSearch); c++) {
                 nextTile = getTile(r,c);
                 if (nextTile != null) {
                     if (!nextTile.getValidated()) {
@@ -71,22 +76,22 @@ public class ScrabbleBoard {
                 }
             }
         }
+
         ScoredWord horizontalWord = validateWord(r,c,false,true);
         ScoredWord verticalWord = validateWord(r,c,true,true);
-
         Vector<ScoredWord> extraWords = new Vector<ScoredWord>();
 
         int pos;
         if (horizontalWord.getScore() != 0) {
             pos = horizontalWord.getStartPosition();
-            for (int i = 0; i < horizontalWord.getWord().length; i++) {
+            for (int i = 0; i < horizontalWord.getWord().length(); i++) {
                 if (i != pos)
                     extraWords.add(validateWord(r, c + i - pos, true, false));
             }
         }
         if (verticalWord.getScore() != 0) {
             pos = verticalWord.getStartPosition();
-            for (int i = 0; i < verticalWord.getWord().length; i++) {
+            for (int i = 0; i < verticalWord.getWord().length(); i++) {
                 if (i != pos)
                     extraWords.add(validateWord(r + i - pos, c, true, false));
             }
@@ -94,22 +99,22 @@ public class ScrabbleBoard {
 
     extraWords.add(horizontalWord);
     extraWords.add(verticalWord);
-    int score;
-    for (ScoredWord w : extraWords) {
-        score += w.getScore();
+    int score = 0;
+    for (int i = 0; i < extraWords.size(); i++) {
+        score += extraWords.get(i).getScore();
     }
 
     return score;
     }
 
     //from a (row,col) position, extend out in a direction (horizontal/vertical) until empty spaces are found
-    //return score for word (0 indicates that the given search returned no word)
-    public int validateWord(int row, int col, boolean direction, boolean scoreBonuses) {
+    //returns a ScoredWord instance (empty or has a word, depending on validation)
+    public ScoredWord validateWord(int row, int col, boolean direction, boolean scoreBonuses) {
         int[] directionCheck = {1,1};
-        String word = getTile(row,col).getLetter();
+        String word = String.valueOf(getTile(row,col).getLetter());
         String compareWord = word;
-        char firstChar = word;
-        int score, nextScore;
+        char[] firstChar = word.toCharArray();
+        int score = 0, nextScore;
         BonusValue nextBonus;
         int wordMultiplier = 1;
 
@@ -167,12 +172,12 @@ public class ScrabbleBoard {
                 directionCheck[1]++;
         }            
 
-        if (word.size() > 1) {
+        if (word.length() > 1) {
             //check word with dictionary!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             if (true && validatedWords.indexOf(word) == -1) {            
                 score *= wordMultiplier;
                 validatedWords.add(word);
-                return new ScoredWord(score, word, firstChar);
+                return new ScoredWord(score, word, firstChar[0]);
                 }
             }
         return new ScoredWord();
@@ -193,10 +198,10 @@ public class ScrabbleBoard {
             this.word = "";
         }
 
-        public int getWordScore() {
+        public int getScore() {
             return score;
         }
-        public int getWord() {
+        public String getWord() {
             return word;
         }
         public int getStartPosition() {

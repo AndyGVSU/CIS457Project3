@@ -198,9 +198,11 @@ public class ScrabbleGUI extends JFrame {
 
                     serverName = (String) JOptionPane.showInputDialog(
                     "Enter server name: ");
-                    if (nameField.getText() != ""){
+                    
+                    if (nameField.getText() != "")
                         username = nameField.getText();
-                    }
+                    else
+                        username = "Player X";
                     
                     if (!(serverName == null || serverName.isEmpty())) {
                         host = true;
@@ -209,7 +211,7 @@ public class ScrabbleGUI extends JFrame {
                         server.start();
 
                         InetAddress myAddress = null;
-                        try{ myAddress = InetAddress.getByName("127.0.0.1");}catch(Exception e){}
+                        try{ myAddress = InetAddress.getByName("127.0.0.1");} catch(Exception e){}
 
                         game.setUpTCP(myAddress, username);
 
@@ -227,9 +229,10 @@ public class ScrabbleGUI extends JFrame {
             clientButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     
-                    if (nameField.getText() != ""){
+                    if (nameField.getText() != "")
                         username = nameField.getText();
-                    }
+                    else
+                        username = "Player X";
                     
                     int selectedServerIndex = serverList.getSelectedIndex();
 
@@ -311,7 +314,7 @@ public class ScrabbleGUI extends JFrame {
                 JButton startButton = new JButton("START GAME");
                 startButton.addActionListener(new java.awt.event.ActionListener() {
                     public void actionPerformed(java.awt.event.ActionEvent evt) {
-                        game.startGame();
+                        game.sendStartGame();
                     }});
 
                 add(startButton);
@@ -351,7 +354,7 @@ public class ScrabbleGUI extends JFrame {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     //tell game to restock game hand
                         //go to next turn (done *client-side*)
-                        game.sendCommand(ScrabbleClient.ScrabbleCommand.PASS_TURN);
+                        game.sendPassTurn();
                         //System.out.println("pass on gui");
                     }});
 
@@ -362,7 +365,7 @@ public class ScrabbleGUI extends JFrame {
                     //upon a successful validation:
                         //tell game to restock game hand
                         //go to next turn
-                        game.sendCommand(ScrabbleClient.ScrabbleCommand.END_TURN); //freezing up?
+                        game.sendEndTurn();
                         //System.out.println("end on gui");
                     }});
             
@@ -377,7 +380,7 @@ public class ScrabbleGUI extends JFrame {
             gridPanel.setLayout(new GridLayout(boardSize,boardSize));
             for(int i = 0; i < boardSize; i++) {
                 for(int j = 0; j < boardSize; j++) {
-                    boardTiles[i][j] = new BoardTile("");
+                    boardTiles[i][j] = new BoardTile(i, j, ' ');
                     gridPanel.add(boardTiles[i][j]);
                 }
             }
@@ -490,16 +493,21 @@ public class ScrabbleGUI extends JFrame {
 
     }
     private class BoardTile extends JTextField implements Transferable, MouseListener {
-        String letter;
+        private int row;
+        private int col;
+        private char letter;
         
-        public BoardTile(String letter) {
+        public BoardTile(int r, int c, char letter) {
+            this.row = r;
+            this.col = c;
+            this.letter = letter;
             setDragEnabled(false);
             
             setPreferredSize(new Dimension(20,20));
             addMouseListener(this);
             setFont(tileBoardFont);
             this.letter = letter;
-            setText(letter);
+            setText(String.valueOf(letter));
             
             setTransferHandler(new TransferHandler() {
                 public boolean canImport(TransferHandler.TransferSupport data) {return true;}
@@ -517,7 +525,8 @@ public class ScrabbleGUI extends JFrame {
                     thisField.setText(newLetter);
 
                     //do game add-to-board event (will overwrite the above display change)
-                    
+                    game.sendAddBoard(row, col, letter);
+                    game.sendRemoveHand(letter);
                     return true;
                 }
 

@@ -53,7 +53,6 @@ private boolean isOpen = true;
         while (isOpen) {
             //mirror received data from players serially
             nextInput = getClientInputStream(playerIndex);
-
             sentBy = nextInput.readBoolean();
 
             //server can only mirror packets sent by clients
@@ -62,17 +61,34 @@ private boolean isOpen = true;
                 cmd = nextInput.readInt();
                 System.out.println("Server received command: "+cmd);
                 
-                extraData = false;
-                if (nextInput.available() > 0) {
+                //extraData = false;
+                
+                /*
+                while (nextInput.available() > 0) {
                     nextInput.readFully(mirror);
                     extraData = true;
                 }
+                */
 
                 for (DataOutputStream o : toClients) {
                     o.writeBoolean(true);
                     o.writeInt(cmd);
-                    if (extraData)
-                        o.write(mirror);
+                    //if (extraData)
+                        //o.write(mirror);
+                    if (cmd == 0)
+                        o.writeInt(nextInput.readInt());
+                    if (cmd == 1)
+                        o.writeChar(nextInput.readChar());
+                    if (cmd == 2) {
+                        o.writeInt(nextInput.readInt());
+                        o.writeInt(nextInput.readInt());
+                        o.writeChar(nextInput.readChar());
+                    }
+                    if (cmd == 3) {
+                        o.writeInt(nextInput.readInt());
+                        o.writeInt(nextInput.readInt());
+                        o.writeChar(nextInput.readChar());
+                    }
                 }
 
                 //changes which player is sending commands
