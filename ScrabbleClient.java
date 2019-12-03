@@ -30,6 +30,7 @@ public class ScrabbleClient {
         END_TURN, PASS_TURN, START_GAME, END_GAME, PLAYER_INFO}
 
     public ScrabbleClient(boolean host) {
+        //System.out.println("GHOST: "+Integer.toString(ADD_HAND));
         this.host = host;
 
         //blank is left bracket
@@ -183,6 +184,7 @@ public class ScrabbleClient {
     //only for command values; additional arguments must be provided when necessary
     public void sendCommand(ScrabbleCommand cmd) {
     	try {
+    	System.out.println("Sending command from client: "+cmd+", number is "+Integer.toString(cmd.ordinal()));
         DataOutputStream out = client.getOutputStream();
         out.writeBoolean(false);
         out.writeInt(cmd.ordinal());
@@ -230,13 +232,16 @@ public class ScrabbleClient {
                 //read next command
                 try {
                 sentByServer = fromServer.readBoolean();
+                //System.out.println("getPlayerNames: "+getPlayerNames());
                 if (!sentByServer)
                     System.out.println("!!!Client got data sent by client!!!");
                 else
                     {
+                    
                     command = fromServer.readInt();
+                    System.out.println("Client recived command "+command);
                     ScrabbleCommand convert = ScrabbleCommand.values()[command];
-                    System.out.println("Client received command: "+command);
+                    System.out.println("Client command value is "+convert);
 
                     switch(convert) {
 
@@ -290,6 +295,7 @@ public class ScrabbleClient {
                             p.addTile(board.removeBoardTile(r, c));
                             break;
                         case END_TURN:
+                            System.out.println("END TURN");
                             //score already-verified tiles
                             int score = board.validatePlacedTiles();
                             players.get(turn).addScore(score);
@@ -305,16 +311,26 @@ public class ScrabbleClient {
                         case PASS_TURN:
                             //System.out.println("pass turn");
                             
+                            //int ghost = board.validatePlacedTiles();//get total points of placed tiles (0 if invalid)
+                            //if (ghost != 0){//valid board
+                            //System.out.println("Valid board with score of "+Integer.toString(ghost));
                             turn++;
-                            if (turn == getPlayerCount())
+                            if (turn == getPlayerCount()){
                                 turn = 0;//if everyone has had a turn this round
-                            
+                            }
                             if (getMyTurn()) {
                                 turnStart();
                             }
+                            //}
+                            //else{//invalid board
+                            //    System.out.println("Error: Board is invalid.");
+                            //}
+                            
+                            
                             break;
                         case START_GAME:
                             //set up game on client-end
+                            
                             for (int i = 0; i < playerCount; i++) {
                                 players.add(new ScrabblePlayer(playerNameList.get(i)));
                             }
@@ -326,16 +342,16 @@ public class ScrabbleClient {
 
                             break;
                         case END_GAME:
-
+                            System. exit(0);
                             break;
-                        case PLAYER_INFO:
+                        case PLAYER_INFO://read info from a new connecting player.
                             playerNameList.add(fromServer.readUTF());
                             playerCount++;
                             break;
                     }
                 }
             } catch(Exception e) {
-                System.out.println("ERROR READING!" + e);
+                System.out.println("ERROR READING!" + e + ", occured at line #"+Integer.toString(e.getStackTrace()[0].getLineNumber()));
             }
 
             setLastCommand(command);
