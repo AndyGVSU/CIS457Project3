@@ -359,14 +359,16 @@ public class ScrabbleGUI extends JFrame {
                     }});
 
             JButton endButton = new JButton("END");
-            passButton.addActionListener(new java.awt.event.ActionListener() {
+            endButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     //tell game to validate word placed on board
                     //upon a successful validation:
                         //tell game to restock game hand
                         //go to next turn
-                        game.sendEndTurn();
                         //System.out.println("end on gui");
+                        game.sendEndTurn();
+                        
+                        
                     }});
             
             leftPanel.add(titleLabel);
@@ -619,7 +621,7 @@ public class ScrabbleGUI extends JFrame {
                 nextCmd = game.getLastCommand(); //resets to -1 after access
                 System.out.print("");
                 if (nextCmd != -1) {
-                    System.out.println("GUI heard command: "+nextCmd);
+                    System.out.println("GUI heard command: "+nextCmd+" which is "+ScrabbleClient.ScrabbleCommand.values()[nextCmd]);
                     if (nextCmd == ScrabbleClient.ScrabbleCommand.START_GAME.ordinal())
                         goToGame();
                     else if (nextCmd != ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal())
