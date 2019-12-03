@@ -221,20 +221,27 @@ public class ScrabbleClient {
                             char nextChar = tileCharacters[i];
                             players.get(playerIndex).addTile(new ScrabbleTile(nextChar));
                         }
-                        //Send command to server?
+                        toServer.writeUTF("ADD_HAND");
                         break;
                     case REM_HAND:
                         for(int i = 0; i < players.get(playerIndex).getHandSize(); i++){
                             players.get(playerIndex).removeTile(i);
                         }
-                        //Send command to server
+                        toServer.writeUTF("REM_HAND");
                         break;
                     case ADD_BOARD_TILE:
-                        board.addBoardTile();
-                    	//currentTileCounts[char index]--; //this is for keeping track of tiles left
+                        int row = fromServer.readInt();
+                        int column = fromServer.readInt();
+                        ScrabbleTile tileName = fromServer.readUTF;
+                        board.addBoardTile(row, column, tileName);
+                        //currentTileCounts[char index]--; //this is for keeping track of tiles left
+                        toServer.writeUTF("ADD_BOARD_TILE");
                         break;
                     case REM_BOARD_TILE:
-                        board.removeBoardTile();
+                        int rw = fromServer.readInt();
+                        int col = fromServer.readInt();
+                        board.removeBoardTile(rw, col);
+                        toServer.writeUTF("REM_BOARD_TILE");
                         break;
                     case END_TURN:
                         //score already-verified tiles
