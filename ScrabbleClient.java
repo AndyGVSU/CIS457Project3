@@ -216,26 +216,29 @@ public class ScrabbleClient {
 
                 switch(convert) {
                     case ADD_HAND:
-                        //if we are host, then pick a tile from tile bag then send to client
-                    	if (getIsHost()){//if we are host
-                            int ghost = new Random().nextInt(tileBag.size());
-                            ScrabbleTile tile = tileBag.get(ghost);
-                            //send this to the others with REM_HAND?
-                    	}
+                        tileBag = new Vector<ScrabbleTile>();
+                    	for(int i = 0; i < tileCounts.length; i++){
+                            char nextChar = tileCharacters[i];
+                            players.get(playerIndex).addTile(new ScrabbleTile(nextChar));
+                        }
+                        //Send command to server?
                         break;
                     case REM_HAND:
-                        
+                        for(int i = 0; i < players.get(playerIndex).getHandSize(); i++){
+                            players.get(playerIndex).removeTile(i);
+                        }
+                        //Send command to server
                         break;
                     case ADD_BOARD_TILE:
-                    
+                        board.addBoardTile();
                     	//currentTileCounts[char index]--; //this is for keeping track of tiles left
                         break;
                     case REM_BOARD_TILE:
-                    
+                        board.removeBoardTile();
                         break;
                     case END_TURN:
                         //score already-verified tiles
-                        
+                        board.scorePlacedTiles();
                         //increment turn
                         turn++;
                         if (turn == getPlayerCount())
