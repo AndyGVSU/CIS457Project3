@@ -156,6 +156,10 @@ public class ScrabbleClient {
         return host;
     }
 
+    public int getMyPlayer() {
+        return playerIndex;
+    }
+
     public boolean getMyTurn() {
         return (turn == playerIndex);
     }
@@ -235,6 +239,7 @@ public class ScrabbleClient {
                 toServer.writeUTF(username);
                 //get MY player index
                 playerIndex = fromServer.readInt();
+                System.out.println("CLIENT: Assigned player "+playerIndex);
             }
             catch (Exception e) {
                 System.out.println(e);
@@ -363,8 +368,12 @@ public class ScrabbleClient {
                             System.exit(0);
                             break;
                         case PLAYER_INFO://read info from a new connecting player.
-                            playerNameList.add(fromServer.readUTF());
-                            playerCount++;
+                            playerNameList.clear();
+                            int clientCount = fromServer.readInt();
+                            for (int i = 0; i < clientCount; i++)
+                                playerNameList.add(fromServer.readUTF());
+                            
+                            playerCount = clientCount;
                             break;
                         case GAME_INIT:
                         /*

@@ -127,7 +127,7 @@ public class ScrabbleGUI extends JFrame {
                                 subPanelc.setEnabled(turnOn);
                 }
             }
-            
+            //update hand
             ScrabblePlayer play = game.getPlayers().get(game.getPlayerIndex());
             if (play != null && handTiles[0] != null) {
                 //update hand
@@ -161,13 +161,19 @@ public class ScrabbleGUI extends JFrame {
 
             Vector<ScrabblePlayer> playerList = game.getPlayers();
             //update player values
-            for (int i = 0; i < game.getPlayerCount(); i++) {
+            int start = game.getMyPlayer();
+            int totalPlayers = game.getPlayerCount();
+            for (int i = 0; i < totalPlayers; i++) {
                 PlayerPanel p = playerLabels[i];
-                play = playerList.get(i);
+                play = playerList.get(start);
                 
                 p.setNameLabel(play.getName());
                 p.setScoreLabel("Score: "+String.valueOf(play.getScore()));
                 p.setTileLabel("Tiles: "+String.valueOf(play.getHandSize()));
+
+                start++;
+                if (start >= totalPlayers)
+                    start = 0;
             }
 
             //update tile count
@@ -218,10 +224,10 @@ public class ScrabbleGUI extends JFrame {
                     if (desiredPlayers > 4)
                         desiredPlayers = 4;
 
-                    if (nameField.getText() != "")
+                    if (!nameField.getText().equals(""))
                         username = nameField.getText();
                     else
-                        username = "Player X";
+                        username = "Player";
                     
                     if (!(serverName == null || serverName.isEmpty() || desiredPlayers == 0)) {
                         host = true;

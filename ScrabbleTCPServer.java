@@ -241,14 +241,16 @@ private int maxPlayers;
                     //System.out.println("Server client info sending: "+Integer.toString(playerIndex));
                     getClientOutputStream(playerIndex).writeInt(playerIndex);
                     
-                    int outputIndex = 0;
+                    int clientCount = toClients.size();
                     for (DataOutputStream o : toClients) {//tell each client of the new arriving player so they can update player counts
                         //if (o != toClients.lastElement()){//if they are not the new client
-                            outputIndex = toClients.indexOf(o);
-                            for (int i = outputIndex; i > -1; i--) {
-                                o.writeUTF(ScrabbleTCPServer.FROM_SERVER);; //from server
-                                o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
-                                o.writeUTF(getClientName(playerIndex));
+                            
+                            o.writeUTF(ScrabbleTCPServer.FROM_SERVER);; //from server
+                            o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
+                            o.writeInt(clientCount);
+
+                            for (int i = 0; i < clientCount; i++) {
+                                o.writeUTF(getClientName(i));
                             }
                         //}
                         //else{System.out.println("Client rejected");}
