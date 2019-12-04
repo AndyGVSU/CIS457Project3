@@ -1,3 +1,12 @@
+/****************************************************************
+ * @author Anderson Hudson, Zack Poorman, Gray Schafer
+ * 
+ * ScrabbleUDPServer
+ * 
+ * For the client hosting the server, broadcasts the server
+ * name and IP to other clients.
+ * 
+ ***************************************************************/
 import java.net.*;
 import java.util.concurrent.TimeUnit;
 

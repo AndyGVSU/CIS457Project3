@@ -1,3 +1,15 @@
+/****************************************************************
+ * @author Anderson Hudson, Zack Poorman, Gray Schafer
+ * 
+ * ScrabbleGUI
+ * 
+ * Holds all GUI-related interactions with the servers/clients.
+ * Has three main panels: the title, lobby, and game.
+ * The game panel has a table for keeping track of tile counts,
+ * a board grid for placing tiles, player labels, and a hand
+ * list.
+ ***************************************************************/
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -155,6 +167,9 @@ public class ScrabbleGUI extends JFrame {
                         if (gameTile.getScored()) {
                             guiTile.setEnabled(false);
                         }
+                    }
+                    else {
+                        guiTile.setText("");
                     }
                 }
             }
@@ -534,10 +549,10 @@ public class ScrabbleGUI extends JFrame {
         private int col;
         private char letter;
         
-        public BoardTile(int r, int c, char letter) {
+        public BoardTile(int r, int c, char l) {
             this.row = r;
             this.col = c;
-            this.letter = letter;
+            this.letter = l;
 
             setDragEnabled(false);
             
@@ -583,6 +598,8 @@ public class ScrabbleGUI extends JFrame {
         public void mousePressed(MouseEvent e) {}
         public void mouseClicked(MouseEvent e) {
             //call game to remove tile
+            if (!getText().equals(""))
+                game.sendRemoveBoard(row, col);
         }
         public void mouseReleased(MouseEvent e) {}
 

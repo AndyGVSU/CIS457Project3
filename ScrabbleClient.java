@@ -1,3 +1,15 @@
+/****************************************************************
+ * @author Anderson Hudson, Zack Poorman, Gray Schafer
+ * 
+ * ScrabbleClient
+ * 
+ * Holds all game and client-related interactions.
+ * Contains game logic, game players, and a game board.
+ * Contains a client thread that receives commands, and methods
+ * for sending these commands.
+ * 
+ ***************************************************************/
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -11,7 +23,6 @@ public class ScrabbleClient {
     private int[] currentTileCounts = tileCounts.clone();
     private char[] tileCharacters = new char[tileCounts.length];
 
-    //private Vector<ScrabbleTile> tileBag;
     private Vector<String> serverNameList = new Vector<String>();
     private Vector<InetAddress> serverIPList = new Vector<InetAddress>();
     private Vector<String> playerNameList = new Vector<String>();
@@ -24,7 +35,6 @@ public class ScrabbleClient {
     private int turn;
     private int playerIndex = -1;
     private int playerCount = 0;
-    private int lastCommand = -1;
 
     private Vector<Integer> lastCommandQueue = new Vector<Integer>();
 
@@ -32,7 +42,6 @@ public class ScrabbleClient {
         END_TURN, PASS_TURN, START_GAME, END_GAME, PLAYER_INFO, GAME_INIT}
 
     public ScrabbleClient(boolean host) {
-        //System.out.println("GHOST: "+Integer.toString(ADD_HAND));
         this.host = host;
 
         //blank is left bracket
@@ -41,21 +50,6 @@ public class ScrabbleClient {
             tileCharacters[i] = startChar;
             startChar++;
         }
-        
-        /*
-        if (host) {
-            tileBag = new Vector<ScrabbleTile>();
-            int count;
-            char nextChar;
-            for (int i = 0; i < tileCounts.length; i++) {
-                count = tileCounts[i];
-                nextChar = tileCharacters[i];
-                for (int t = 0; t < count; t++) {
-                    tileBag.add(new ScrabbleTile(nextChar));
-                }
-            }
-        }
-        */
 
         board = new ScrabbleBoard();
         ClientUDP serverSearcher = new ClientUDP();
@@ -68,7 +62,6 @@ public class ScrabbleClient {
     
     /*
      * Returns this client's player index.
-     * 
      */
     public int getPlayerIndex() {
     	return playerIndex;
@@ -80,13 +73,6 @@ public class ScrabbleClient {
 
     public int[] getCurrentTileCounts() {
     	return currentTileCounts;
-    }
-
-    
-    public void turnStart(int recentTurn) {
-        //int handSize = players.get(recentTurn).getHandSize();
-        
-        //sendAddHand(ScrabblePlayer.HAND_SIZE - handSize);
     }
     
     public void sendStartGame() {
@@ -295,7 +281,6 @@ public class ScrabbleClient {
                                     break;
                                 }
                             }
-
                             break;
                         case ADD_BOARD_TILE:
                             int row = fromServer.readInt();
@@ -320,48 +305,15 @@ public class ScrabbleClient {
                                 if (getMyTurn())
                                     sendAddHand(ScrabblePlayer.HAND_SIZE - play.getHandSize(), 0);
                             }
-                            //if score > 0, addHand
-
-                            break;
-                        case PASS_TURN:
-                            //System.out.println("pass turn");
-                            
-                            //int ghost = board.validatePlacedTiles();//get total points of placed tiles (0 if invalid)
-                            //if (ghost != 0){//valid board
-                            //System.out.println("Valid board with score of "+Integer.toString(ghost));
-                            
-                            //whether to automatically pass for the next player
-                            //int autoSkip = fromServer.readInt();
-                            /*
-                            if (getMyTurn()) {
-                                turnStart(turn);
-                            }
-                            */
-                            turn++;
-                            if (turn == getPlayerCount()) {
-                                turn = 0;//if everyone has had a turn this round
-                            }
-
-                            System.out.println("TURN "+turn);
-
-                            //}
-                            //else{//invalid board
-                            //    System.out.println("Error: Board is invalid.");
-                            //}
                             break;
                         case START_GAME:
                             //set up game on client-end
-
                             for (int i = 0; i < playerCount; i++) {
                                 players.add(new ScrabblePlayer(playerNameList.get(i)));
                             }
                             //each player should have an automatic pass to refill hand
-
                             if (getMyTurn())
                                 sendAddHand(ScrabblePlayer.HAND_SIZE, 1);
-                                //sendGameInit(1);
-                            //turnStart();
-
                             break;
                         case END_GAME:
 
@@ -375,25 +327,9 @@ public class ScrabbleClient {
                             
                             playerCount = clientCount;
                             break;
-                        case GAME_INIT:
-                        /*
-                            int autoSkip = fromServer.readInt();
-
-                            int nextAuto = 0;
-                            if (autoSkip == 1) {
-                                if (turn < getPlayerCount() - 1)
-                                    nextAuto = 1;
-                            }
-
-                            if (getMyTurn()) {
-                                sendAddHand(ScrabblePlayer.HAND_SIZE);
-                                //sendPassTurn();
-                                if (nextAuto == 1)
-                                    sendGameInit(1);
-                                else
-                                    sendPassTurn();
-                            }
-                        */
+                        case PASS_TURN: //unused
+                            break;
+                        case GAME_INIT: //unused
                             break;
                     }
                 }

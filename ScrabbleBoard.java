@@ -1,3 +1,13 @@
+/****************************************************************
+ * @author Anderson Hudson, Zack Poorman, Gray Schafer
+ * 
+ * ScrabbleBoard
+ * 
+ * Holds all board data (tile grid, bonus values, scored words).
+ * Holds methods to score words that have been placed.
+ * 
+ ***************************************************************/
+
 import java.util.*;
 
 public class ScrabbleBoard {

@@ -1,3 +1,16 @@
+/****************************************************************
+ * @author Anderson Hudson, Zack Poorman, Gray Schafer
+ * 
+ * ScrabbleTCPServer
+ * 
+ * Threaded class created for the client hosting the game.
+ * Used as an all-in-one client-server system, where clients
+ * send commands to all clients in the game to maintain a
+ * shared game state (also called a remote-method system).
+ * Mirrors data received from a client back to all clients.
+ * Additionally, keeps track of tiles left in the game.
+ ***************************************************************/
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -58,10 +71,8 @@ private int maxPlayers;
         }
         //can only receive data from ONE PLAYER at a time
         playerIndex = 0;
-        //byte[] mirror = new byte[2048];
         int cmd;
         String sentBy;
-        //boolean extraData = false;
 
         try {
         while (isOpen) {
@@ -76,21 +87,7 @@ private int maxPlayers;
             }
             else {
                 cmd = nextInput.readInt();
-                System.out.println("SERVER: received command: "+cmd);
-                
-                //extraData = false;
-                
-                /*
-                while (nextInput.available() > 0) {
-                    nextInput.readFully(mirror);
-                    extraData = true;
-                }
-                */
-
-                
-                //if (extraData)
-                    //o.write(mirror);
-                
+                System.out.println("SERVER: received command: "+cmd);    
                     
                 //read extra-parametered commands
                 int toDraw = 0, init = 0, r = 0, c = 0, autoSkip = 0;
@@ -104,7 +101,6 @@ private int maxPlayers;
                     //handle ALL drawn tiles
                     Vector<String> tiles = new Vector<String>();
                     sentTiles = "";
-                    boolean noMoreTiles = false;
 
                     int tcount;
                     for (int ch = 0; ch < tileCharacters.length; ch++) {
@@ -113,6 +109,7 @@ private int maxPlayers;
                             tiles.add(String.valueOf(tileCharacters[ch]));
                     }
                     
+                    boolean noMoreTiles;
                     char[] fromString;
                     Random grab = new Random();
                     for(int i = 0; i < toDraw; i++){
@@ -139,7 +136,6 @@ private int maxPlayers;
                 if (cmd == 3) {
                     r = nextInput.readInt();
                     c = nextInput.readInt();
-                    //o.writeChar(nextInput.readChar());
                 }
                 if (cmd == 9) {
                     autoSkip = nextInput.readInt();
@@ -176,9 +172,6 @@ private int maxPlayers;
 
                 //changes which player is sending commands
                 if (cmd == ScrabbleClient.ScrabbleCommand.ADD_HAND.ordinal()) {
-                    //cmd == ScrabbleClient.ScrabbleCommand.END_TURN.ordinal() ||
-                //cmd == ScrabbleClient.ScrabbleCommand.PASS_TURN.ordinal() ||
-                //cmd == ScrabbleClient.ScrabbleCommand.GAME_INIT.ordinal()) {
                     playerIndex++;
                     if (playerIndex >= clients.size()) {
                         playerIndex = 0;
@@ -203,10 +196,6 @@ private int maxPlayers;
         clientNames.add(u);
         fromClients.add(i);
         toClients.add(o);
-    }
-
-    private Socket getClientSocket(int playerIndex) {
-        return clients.get(playerIndex);
     }
 
     private String getClientName(int playerIndex) {
@@ -238,24 +227,18 @@ private int maxPlayers;
                     String username = nextInput.readUTF();
     
                     addClient(nextSocket, username, nextInput, nextOutput);
-                    //System.out.println("Server client info sending: "+Integer.toString(playerIndex));
                     getClientOutputStream(playerIndex).writeInt(playerIndex);
                     
                     int clientCount = toClients.size();
-                    for (DataOutputStream o : toClients) {//tell each client of the new arriving player so they can update player counts
-                        //if (o != toClients.lastElement()){//if they are not the new client
-                            
-                            o.writeUTF(ScrabbleTCPServer.FROM_SERVER);; //from server
-                            o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
-                            o.writeInt(clientCount);
+                    for (DataOutputStream o : toClients) {//tell each client of the new arriving player so they can update player counts    
+                        o.writeUTF(ScrabbleTCPServer.FROM_SERVER);; //from server
+                        o.writeInt(ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal());
+                        o.writeInt(clientCount);
 
-                            for (int i = 0; i < clientCount; i++) {
-                                o.writeUTF(getClientName(i));
-                            }
-                        //}
-                        //else{System.out.println("Client rejected");}
+                        for (int i = 0; i < clientCount; i++) {
+                            o.writeUTF(getClientName(i));
+                        }
                     }
-                    //}
                 }
                 catch (Exception e) {
                     System.out.println(e);

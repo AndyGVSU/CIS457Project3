@@ -1,3 +1,12 @@
+/****************************************************************
+ * @author Anderson Hudson, Zack Poorman, Gray Schafer
+ * 
+ * ScrabblePlayer
+ * 
+ * Holds game player data (score, name, tiles in hand).
+ * 
+ ***************************************************************/
+
 import java.util.*;
 import java.net.*;
 
