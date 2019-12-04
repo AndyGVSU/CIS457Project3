@@ -38,6 +38,8 @@ public class ScrabblePlayer {
         return hand.size();
     }
     public ScrabbleTile getTile(int index) {
+        if (index >= hand.size())
+            return null;
     	return hand.get(index);
     }
 }

@@ -18,7 +18,8 @@ public class ScrabbleGUI extends JFrame {
     private ScrabbleClient game = null;
     
     private ScrabbleTCPServer server;
-    
+    private ScrabbleUDPServer nameSend;
+
     private Vector<String> serverNameList;
     private Vector<InetAddress> serverIPList;
     private Vector<String> playerNameList;
@@ -34,6 +35,7 @@ public class ScrabbleGUI extends JFrame {
     private String serverName;
     private String username = "!DEBUG NAME!"; //defualt name
     private boolean gameRunning = true;
+    private boolean gamePanelInit = false;
     
     private boolean enabled = true;
     private boolean host;
@@ -74,18 +76,26 @@ public class ScrabbleGUI extends JFrame {
         setContentPane(new LobbyPanel());
         finishComponents();
 
+        if (host) {
+            nameSend = new ScrabbleUDPServer(serverName);
+            nameSend.start();
+        }
+
         commandListener = new GameLoop();
         commandListener.start();
     } 
 
     public void goToGame() {
         playerListUpdate.close();
-        if (host)
+        if (host) {
             server.closeLobby();
+            nameSend.close();
+        }
         remove(getContentPane());
         GamePanel gp = new GamePanel();
         setContentPane(gp);
         finishComponents();
+        gamePanelInit = true;
         updateGUI(false);
     }
 
@@ -100,72 +110,74 @@ public class ScrabbleGUI extends JFrame {
 
     public void updateGUI(boolean turnOn) {
        
-        //enables/disables all components, but only if flagged beforehand (to avoid repeats)
-        if (enabled != turnOn) {
-            System.out.println("GUI Turned On: "+turnOn);
-            enabled = turnOn;
+        if (gamePanelInit) {
+            //enables/disables all components, but only if flagged beforehand (to avoid repeats)
+            if (enabled != turnOn) {
+                System.out.println("GUI Turned On: "+turnOn);
+                enabled = turnOn;
 
-            for (Component p : getContentPane().getComponents()) {
-                for (Component subPanelc : ((JPanel) p).getComponents())
-                    if (subPanelc.getClass() == JPanel.class) {
-                        for (Component d : ((JPanel) subPanelc).getComponents()) 
-                            d.setEnabled(turnOn);
-                    }   
-                    else
-                        subPanelc.setEnabled(turnOn);
-            }
-        }
-        
-        ScrabblePlayer play = game.getPlayers().get(game.getPlayerIndex());
-        if (play != null) {
-	        //update hand
-	        for (int i = 0; i < handTiles.length; i++) {
-	        	try {
-	            handTiles[i].setText(String.valueOf(play.getTile(i).getLetter()));
-	        	}
-	        	//no more tiles in hand
-	        	catch (ArrayIndexOutOfBoundsException e) {
-	        		handTiles[i].setText("");
-	        	}
-	        }
-        }
-        //update board
-        ScrabbleBoard board = game.getBoard();
-        ScrabbleTile gameTile;
-        BoardTile guiTile;
-        for (int r = 0; r < boardTiles.length; r++) {
-            for (int c = 0; c < boardTiles[r].length; c++) {
-                //setText();
-                guiTile = boardTiles[r][c];
-                gameTile = board.getTile(r,c);
-                if (gameTile != null){
-                    guiTile.setEnabled(false);
+                for (Component p : getContentPane().getComponents()) {
+                    if (p.getClass() == JPanel.class)
+                        for (Component subPanelc : ((JPanel) p).getComponents())
+                            if (subPanelc.getClass() == JPanel.class) {
+                                for (Component d : ((JPanel) subPanelc).getComponents()) 
+                                    d.setEnabled(turnOn);
+                            }   
+                            else
+                                subPanelc.setEnabled(turnOn);
                 }
-                else {
-                    guiTile.setBackground(boardBonusColor[board.getBonus(r, c).ordinal()]);
-                }  
             }
-        }
-
-        Vector<ScrabblePlayer> playerList = game.getPlayers();
-        //update player values
-        for (int i = 0; i < game.getPlayerCount(); i++) {
-            PlayerPanel p = playerLabels[i];
-            play = playerList.get(i);
             
-            p.setNameLabel(play.getName());
-            p.setScoreLabel("Score: "+String.valueOf(play.getScore()));
-            p.setTileLabel("Tiles: "+String.valueOf(play.getHandSize()));
+            ScrabblePlayer play = game.getPlayers().get(game.getPlayerIndex());
+            if (play != null && handTiles[0] != null) {
+                //update hand
+                ScrabbleTile tile;
+                for (int i = 0; i < handTiles.length; i++) {
+                    tile = play.getTile(i);
+                    if (tile != null)
+                        handTiles[i].setText(String.valueOf(tile.getLetter()));
+                    else
+                        handTiles[i].setText("");
+                }
+            }
+            //update board
+            ScrabbleBoard board = game.getBoard();
+            ScrabbleTile gameTile;
+            BoardTile guiTile;
+            for (int r = 0; r < boardTiles.length; r++) {
+                for (int c = 0; c < boardTiles[r].length; c++) {
+                    //setText();
+                    guiTile = boardTiles[r][c];
+                    gameTile = board.getTile(r,c);
+                    guiTile.setBackground(boardBonusColor[board.getBonus(r, c).ordinal()]);
+                    if (gameTile != null) {
+                        guiTile.setText(String.valueOf(gameTile.getLetter()));
+                        if (gameTile.getScored()) {
+                            guiTile.setEnabled(false);
+                        }
+                    }
+                }
+            }
+
+            Vector<ScrabblePlayer> playerList = game.getPlayers();
+            //update player values
+            for (int i = 0; i < game.getPlayerCount(); i++) {
+                PlayerPanel p = playerLabels[i];
+                play = playerList.get(i);
+                
+                p.setNameLabel(play.getName());
+                p.setScoreLabel("Score: "+String.valueOf(play.getScore()));
+                p.setTileLabel("Tiles: "+String.valueOf(play.getHandSize()));
+            }
+            //update tile count
+            int[] tileCounts = game.getCurrentTileCounts();
+            int totalTiles = 0;
+            for (int i = 0; i < tileCounts.length; i++) {
+                totalTiles += tileCounts[i];
+                letterCounts.setValueAt(String.valueOf(tileCounts[i]),i+1,1);
+            }
+            totalLettersLabel.setText("Total Tiles: "+String.valueOf(totalTiles));
         }
-        //update tile count
-        int[] tileCounts = game.getCurrentTileCounts();
-        int totalTiles = 0;
-        for (int i = 0; i < tileCounts.length; i++) {
-        	totalTiles += tileCounts[i];
-        	letterCounts.setValueAt(String.valueOf(tileCounts[i]),i+1,1);
-        }
-        totalLettersLabel.setText("Total Tiles: "+String.valueOf(totalTiles));
-        
     }
 
     public ScrabbleClient getGame() {
@@ -198,16 +210,22 @@ public class ScrabbleGUI extends JFrame {
 
                     serverName = (String) JOptionPane.showInputDialog(
                     "Enter server name: ");
-                    
+
+                    int desiredPlayers = 0;
+                    desiredPlayers = Integer.parseInt((String) JOptionPane.showInputDialog(
+                    "Enter number of players (max 4): "));
+                    if (desiredPlayers > 4)
+                        desiredPlayers = 4;
+
                     if (nameField.getText() != "")
                         username = nameField.getText();
                     else
                         username = "Player X";
                     
-                    if (!(serverName == null || serverName.isEmpty())) {
+                    if (!(serverName == null || serverName.isEmpty() || desiredPlayers == 0)) {
                         host = true;
 
-                        server = new ScrabbleTCPServer();
+                        server = new ScrabbleTCPServer(desiredPlayers);
                         server.start();
 
                         InetAddress myAddress = null;
@@ -285,10 +303,6 @@ public class ScrabbleGUI extends JFrame {
         public LobbyPanel() {
             initComponents();
             game.closeUDP();
-            if (host) {
-                ScrabbleUDPServer nameSend = new ScrabbleUDPServer(serverName);
-                nameSend.start();
-            }
         }
 
         private void initComponents() {
@@ -354,7 +368,13 @@ public class ScrabbleGUI extends JFrame {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     //tell game to restock game hand
                         //go to next turn (done *client-side*)
-                        game.sendPassTurn();
+                        int usedTiles = 0;
+                        for (int i = 0; i < handTiles.length; i++) {
+                            if (handTiles[i] != null)
+                                usedTiles++;
+                        }
+                        game.sendAddHand(usedTiles, 0);
+                        //game.sendPassTurn();
                         //System.out.println("pass on gui");
                     }});
 
@@ -362,13 +382,19 @@ public class ScrabbleGUI extends JFrame {
             endButton.addActionListener(new java.awt.event.ActionListener() {
                 public void actionPerformed(java.awt.event.ActionEvent evt) {
                     //tell game to validate word placed on board
-                    //upon a successful validation:
+                   
                         //tell game to restock game hand
                         //go to next turn
                         //System.out.println("end on gui");
+                        /*
+                        int usedTiles = 0;
+                        for (int i = 0; i < handTiles.length; i++) {
+                            if (handTiles[i].getText() == "")
+                                usedTiles++;
+                        }
+                        */
+                        //game.sendAddHand(usedTiles, 0);
                         game.sendEndTurn();
-                        
-                        
                     }});
             
             leftPanel.add(titleLabel);
@@ -399,7 +425,7 @@ public class ScrabbleGUI extends JFrame {
             
             HandTile h;
             for(int i = 0; i < ScrabblePlayer.HAND_SIZE; i++) {
-                h = new HandTile("A");
+                h = new HandTile("");
                 handTiles[i] = h;
                 //handButton.setHorizontalAlignment(SwingConstants.CENTER);
                 handPanel.add(h);
@@ -503,32 +529,35 @@ public class ScrabbleGUI extends JFrame {
             this.row = r;
             this.col = c;
             this.letter = letter;
+
             setDragEnabled(false);
             
             setPreferredSize(new Dimension(20,20));
             addMouseListener(this);
             setFont(tileBoardFont);
-            this.letter = letter;
             setText(String.valueOf(letter));
             
             setTransferHandler(new TransferHandler() {
                 public boolean canImport(TransferHandler.TransferSupport data) {return true;}
+
                 public boolean importData(TransferHandler.TransferSupport data) {
                     JTextField thisField = (JTextField) data.getComponent();
                     Transferable transfer = data.getTransferable();
-                    String newLetter = null;
+
+                    String newLetter = "";
                     try {
                         newLetter = (String) transfer.getTransferData(DataFlavor.stringFlavor);
                     }
                     catch (Exception e) {}
-                    //System.out.println(newLetter);
-
+                        
+                    final char convertedLetter = newLetter.charAt(0);
+                    
                     //for appearance only
                     thisField.setText(newLetter);
 
                     //do game add-to-board event (will overwrite the above display change)
-                    game.sendAddBoard(row, col, letter);
-                    game.sendRemoveHand(letter);
+                    game.sendAddBoard(row, col, convertedLetter);
+                    game.sendRemoveHand(convertedLetter);
                     return true;
                 }
 
@@ -618,13 +647,14 @@ public class ScrabbleGUI extends JFrame {
             int nextCmd = -1;
 
             while(gameRunning) {
-                nextCmd = game.getLastCommand(); //resets to -1 after access
+                nextCmd = game.getLastCommand(); //resets to -1 after access (make a queue?)
                 System.out.print("");
                 if (nextCmd != -1) {
                     System.out.println("GUI heard command: "+nextCmd+" which is "+ScrabbleClient.ScrabbleCommand.values()[nextCmd]);
                     if (nextCmd == ScrabbleClient.ScrabbleCommand.START_GAME.ordinal())
                         goToGame();
-                    else if (nextCmd != ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal())
+                    else if (nextCmd != ScrabbleClient.ScrabbleCommand.PLAYER_INFO.ordinal() &&
+                             nextCmd != ScrabbleClient.ScrabbleCommand.GAME_INIT.ordinal())
                         updateGUI(game.getMyTurn());
                 }
             }

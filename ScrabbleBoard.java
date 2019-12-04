@@ -76,6 +76,7 @@ public class ScrabbleBoard {
                 }
             }
         }
+        r--; c--; //correct values from incrementation
 
         ScoredWord horizontalWord = validateWord(r,c,false,true);
         ScoredWord verticalWord = validateWord(r,c,true,true);
@@ -83,7 +84,7 @@ public class ScrabbleBoard {
 
         int pos;
         if (horizontalWord.getScore() != 0) {
-            pos = horizontalWord.getStartPosition();
+            pos = verticalWord.getStartPosition();
             for (int i = 0; i < horizontalWord.getWord().length(); i++) {
                 if (i != pos)
                     extraWords.add(validateWord(r, c + i - pos, true, false));
@@ -111,7 +112,8 @@ public class ScrabbleBoard {
     //returns a ScoredWord instance (empty or has a word, depending on validation)
     public ScoredWord validateWord(int row, int col, boolean direction, boolean scoreBonuses) {
         int[] directionCheck = {1,1};
-        String word = String.valueOf(getTile(row,col).getLetter());
+        ScrabbleTile startTile = getTile(row,col);
+        String word = String.valueOf(startTile.getLetter());
         String compareWord = word;
         char[] firstChar = word.toCharArray();
         int score = 0, nextScore;
@@ -122,17 +124,28 @@ public class ScrabbleBoard {
         char tileLetter1, tileLetter2;
         boolean doneSearching = false;
 
-        int row1, col1, row2, col2;
+        int row1 = row, col1 = col, row2 = row, col2 = col;
 
+        if (direction)
+            directionCheck[0] = 0;
+        else
+            directionCheck[1] = 0;
+
+        boolean tile1space = false;
+        boolean tile2space = false;
         while (!doneSearching) {
-            row1 = row - directionCheck[1];
-            col1 = col - directionCheck[0];
-            row2 = row + directionCheck[1];
-            col2 = col + directionCheck[0];
+            if (!tile1space) {
+                row1 -= directionCheck[1];
+                col1 -= directionCheck[0];
+            }
+            if (!tile2space) {
+                row2 += directionCheck[1];
+                col2 += directionCheck[0];
+            }
 
             tile1 = getTile(row1, col1);
             tile2 = getTile(row2, col2);
-            if (tile1 != null) {
+            if (tile1 != null && !tile1space) {
                 word = tile1.getLetter() + word;
                 nextScore = tile1.getScoreValue();
                 nextBonus = getBonus(row1, col1);
@@ -147,7 +160,10 @@ public class ScrabbleBoard {
 
                 score += nextScore;
             }
-            if (tile2 != null) {
+            else {
+                tile1space = true;
+            }
+            if (tile2 != null && !tile2space) {
                 word = word + tile2.getLetter();
                 nextScore = tile2.getScoreValue();
                 nextBonus = getBonus(row2, col2);
@@ -162,22 +178,27 @@ public class ScrabbleBoard {
 
                 score += nextScore;
             }
+            else {
+                tile2space = true;
+            }
             if (word.equals(compareWord))
                 break;
             compareWord = word;
-
-            if (direction)
-                directionCheck[0]++;
-            else
-                directionCheck[1]++;
         }            
 
+        int startPos;
         if (word.length() > 1) {
-            //check word with dictionary!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            if (true && validatedWords.indexOf(word) == -1) {            
+            if (direction) {
+                startPos = (row - row1) - 1;
+            }
+            else {                
+                startPos = (col - col1) - 1;
+            }
+            //check word with dictionary?
+            if (true && validatedWords.indexOf(word) == -1) {          
                 score *= wordMultiplier;
                 validatedWords.add(word);
-                return new ScoredWord(score, word, firstChar[0]);
+                return new ScoredWord(score, word, startPos);
                 }
             }
         return new ScoredWord();
