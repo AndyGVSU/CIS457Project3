@@ -9,9 +9,9 @@ import java.net.*;
 
 public class ScrabbleGUI extends JFrame {
 
-    final static Font tileBoardFont = new Font("Times New Roman",0,12);
+    final static Font tileBoardFont = new Font("Times New Roman",Font.BOLD,12);
     final static Font tileHandFont = new Font("Times New Roman",0,32);
-    final private Color[] boardBonusColor = {Color.WHITE, Color.CYAN, Color.BLUE, Color.PINK, Color.RED, Color.YELLOW};
+    final private Color[] boardBonusColor = {Color.WHITE, Color.CYAN, Color.GREEN, Color.PINK, Color.RED, Color.YELLOW};
     private BoardTile[][] boardTiles;
     private HandTile[] handTiles = new HandTile[ScrabblePlayer.HAND_SIZE];
     private PlayerPanel[] playerLabels = null;
@@ -33,7 +33,7 @@ public class ScrabbleGUI extends JFrame {
     private JTable letterCounts;
     
     private String serverName;
-    private String username = "!DEBUG NAME!"; //defualt name
+    private String username = "!DEBUG NAME!"; //default name
     private boolean gameRunning = true;
     private boolean gamePanelInit = false;
     
@@ -169,6 +169,7 @@ public class ScrabbleGUI extends JFrame {
                 p.setScoreLabel("Score: "+String.valueOf(play.getScore()));
                 p.setTileLabel("Tiles: "+String.valueOf(play.getHandSize()));
             }
+
             //update tile count
             int[] tileCounts = game.getCurrentTileCounts();
             int totalTiles = 0;
@@ -354,11 +355,13 @@ public class ScrabbleGUI extends JFrame {
             leftPanel.setLayout(new BoxLayout(leftPanel,BoxLayout.Y_AXIS));
 
             JLabel titleLabel = new JLabel("Scrabble CIS457");
-            letterCounts = new JTable(28,2);
+            letterCounts = new JTable(28,3);
             letterCounts.setValueAt("Letter", 0, 0);
             letterCounts.setValueAt("Tiles Left", 0, 1);
+            letterCounts.setValueAt("Tile Score", 0, 2);
             for (int i = 1; i < 28; i++) {
-            	letterCounts.setValueAt((char) ('A' + i - 1), i, 0);
+                letterCounts.setValueAt((char) ('A' + i - 1), i, 0);
+                letterCounts.setValueAt(ScrabbleTile.tileScore[i-1], i, 2);
             }
             letterCounts.setValueAt("blank", 27, 0);
 
@@ -605,6 +608,7 @@ public class ScrabbleGUI extends JFrame {
                     TimeUnit.SECONDS.sleep(2);
                     updateServerList();
                     updateList.setListData(serverNameList);
+                    updateList.setSelectedIndex(0);
                 }
             }
             catch (Exception e) {
@@ -647,7 +651,7 @@ public class ScrabbleGUI extends JFrame {
             int nextCmd = -1;
 
             while(gameRunning) {
-                nextCmd = game.getLastCommand(); //resets to -1 after access (make a queue?)
+                nextCmd = game.getLastCommand();
                 System.out.print("");
                 if (nextCmd != -1) {
                     System.out.println("GUI heard command: "+nextCmd+" which is "+ScrabbleClient.ScrabbleCommand.values()[nextCmd]);

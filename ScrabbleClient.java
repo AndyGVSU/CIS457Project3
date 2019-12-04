@@ -26,6 +26,8 @@ public class ScrabbleClient {
     private int playerCount = 0;
     private int lastCommand = -1;
 
+    private Vector<Integer> lastCommandQueue = new Vector<Integer>();
+
     public enum ScrabbleCommand {ADD_HAND, REM_HAND, ADD_BOARD_TILE, REM_BOARD_TILE, 
         END_TURN, PASS_TURN, START_GAME, END_GAME, PLAYER_INFO, GAME_INIT}
 
@@ -185,13 +187,14 @@ public class ScrabbleClient {
     }
 
     public void setLastCommand(int c) {
-        lastCommand = c;
+        lastCommandQueue.add(Integer.valueOf(c));
     }
 
     public int getLastCommand() {
-        int last = lastCommand;
-        lastCommand = -1;
-        return last;
+        if (lastCommandQueue.size() > 0) {
+            return lastCommandQueue.remove(0).intValue();
+        }
+        return -1;
     }
 
     //only for command values; additional arguments must be provided when necessary

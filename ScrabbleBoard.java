@@ -70,7 +70,7 @@ public class ScrabbleBoard {
             for (c = 0; (c < ScrabbleBoard.BOARD_SIZE && !breakSearch); c++) {
                 nextTile = getTile(r,c);
                 if (nextTile != null) {
-                    if (!nextTile.getValidated()) {
+                    if (!nextTile.getScored()) {
                         breakSearch = true;
                     }
                 }
@@ -83,18 +83,25 @@ public class ScrabbleBoard {
         Vector<ScoredWord> extraWords = new Vector<ScoredWord>();
 
         int pos;
+        ScrabbleTile extraCheck;
         if (horizontalWord.getScore() != 0) {
-            pos = verticalWord.getStartPosition();
+            pos = horizontalWord.getStartPosition();
             for (int i = 0; i < horizontalWord.getWord().length(); i++) {
-                if (i != pos)
-                    extraWords.add(validateWord(r, c + i - pos, true, false));
+                extraCheck = getTile(r, c + i - pos);
+                if (!extraCheck.getScored())
+                    if (i != pos)
+                        extraWords.add(validateWord(r, c + i - pos, true, false));
+                extraCheck.setScored(true);
             }
         }
         if (verticalWord.getScore() != 0) {
             pos = verticalWord.getStartPosition();
             for (int i = 0; i < verticalWord.getWord().length(); i++) {
-                if (i != pos)
-                    extraWords.add(validateWord(r + i - pos, c, true, false));
+                extraCheck = getTile(r + i - pos, c);
+                if (!extraCheck.getScored())
+                    if (i != pos)
+                        extraWords.add(validateWord(r + i - pos, c, true, false));
+                extraCheck.setScored(true);
             }
         }
 
@@ -116,8 +123,8 @@ public class ScrabbleBoard {
         String word = String.valueOf(startTile.getLetter());
         String compareWord = word;
         char[] firstChar = word.toCharArray();
-        int score = 0, nextScore;
-        BonusValue nextBonus;
+        int score = 0;
+        int[] nextScore;
         int wordMultiplier = 1;
 
         ScrabbleTile tile1, tile2;
@@ -126,11 +133,18 @@ public class ScrabbleBoard {
 
         int row1 = row, col1 = col, row2 = row, col2 = col;
 
+        //score first tile
+        nextScore = scoreTile(row, col);
+        if (nextScore[1] > wordMultiplier)
+            wordMultiplier = nextScore[1];
+        score += nextScore[0];
+
         if (direction)
             directionCheck[0] = 0;
         else
             directionCheck[1] = 0;
 
+        //score tiles in specified direction
         boolean tile1space = false;
         boolean tile2space = false;
         while (!doneSearching) {
@@ -147,36 +161,22 @@ public class ScrabbleBoard {
             tile2 = getTile(row2, col2);
             if (tile1 != null && !tile1space) {
                 word = tile1.getLetter() + word;
-                nextScore = tile1.getScoreValue();
-                nextBonus = getBonus(row1, col1);
-                if (nextBonus == BonusValue.DL || nextBonus == BonusValue.ST)
-                    nextScore *= 2;
-                else if (nextBonus == BonusValue.TL)
-                    nextScore *= 3;
-                else if (nextBonus == BonusValue.DW)
-                    wordMultiplier = 2;
-                else if (nextBonus == BonusValue.TW)
-                    wordMultiplier = 3;
-
-                score += nextScore;
+                
+                nextScore = scoreTile(row1, col1);
+                if (nextScore[1] > wordMultiplier)
+                    wordMultiplier = nextScore[1];
+                score += nextScore[0];
             }
             else {
                 tile1space = true;
             }
             if (tile2 != null && !tile2space) {
                 word = word + tile2.getLetter();
-                nextScore = tile2.getScoreValue();
-                nextBonus = getBonus(row2, col2);
-                if (nextBonus == BonusValue.DL || nextBonus == BonusValue.ST)
-                    nextScore *= 2;
-                else if (nextBonus == BonusValue.TL)
-                    nextScore *= 3;
-                else if (nextBonus == BonusValue.DW)
-                    wordMultiplier = 2;
-                else if (nextBonus == BonusValue.TW)
-                    wordMultiplier = 3;
 
-                score += nextScore;
+                nextScore = scoreTile(row2, col2);
+                if (nextScore[1] > wordMultiplier)
+                    wordMultiplier = nextScore[1];
+                score += nextScore[0];
             }
             else {
                 tile2space = true;
@@ -202,6 +202,29 @@ public class ScrabbleBoard {
                 }
             }
         return new ScoredWord();
+    }
+
+    private int[] scoreTile(int row, int col) {
+        ScrabbleTile tile = getTile(row, col);
+        int nextScore = tile.getScoreValue();
+        BonusValue nextBonus = getBonus(row, col);
+        int wordMultiplier = 1;
+        int[] returnArray = new int[2];
+
+        if (!tile.getScored()) {
+            if (nextBonus == BonusValue.DL)
+                nextScore *= 2;
+            else if (nextBonus == BonusValue.TL)
+                nextScore *= 3;
+            else if (nextBonus == BonusValue.DW || nextBonus == BonusValue.ST)
+                wordMultiplier = 2;
+            else if (nextBonus == BonusValue.TW)
+                wordMultiplier = 3;
+        }
+            
+        returnArray[0] = nextScore;
+        returnArray[1] = wordMultiplier;
+        return returnArray;
     }
 
     private class ScoredWord {
